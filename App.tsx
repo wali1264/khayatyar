@@ -20,7 +20,6 @@ import {
   Search, 
   Plus, 
   Scissors, 
-  CreditCard, 
   User, 
   Users,
   History,
@@ -29,7 +28,6 @@ import {
   Download,
   Database,
   X,
-  Clock,
   Filter,
   ArrowLeft,
   UploadCloud,
@@ -55,7 +53,7 @@ import CustomerForm from './components/CustomerForm';
 type MobileCustomerTab = 'INFO' | 'MEASUREMENTS' | 'ORDERS';
 type DashboardFilter = 'ALL' | OrderStatus;
 
-// --- Sub-components moved outside to prevent re-mounting/focus loss ---
+// --- Sub-components ---
 
 const AuthView = ({ 
   authMode, 
@@ -72,13 +70,13 @@ const AuthView = ({
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 space-y-8 border border-slate-100">
+    <div className="min-h-[100dvh] bg-slate-50 flex items-center justify-center p-6">
+      <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 space-y-8 border border-slate-100 animate-in fade-in zoom-in duration-300">
         <div className="text-center space-y-2">
           <div className="w-20 h-20 bg-indigo-600 rounded-[1.8rem] flex items-center justify-center text-white mx-auto shadow-xl shadow-indigo-600/20 mb-4">
             <Scissors size={40} />
           </div>
-          <h1 className="text-3xl font-bold text-slate-800">TailorMaster</h1>
+          <h1 className="text-3xl font-bold text-slate-800">خیاطیار</h1>
           <p className="text-slate-400 text-sm">سامانه مدیریت خیاطی هوشمند</p>
         </div>
 
@@ -90,7 +88,7 @@ const AuthView = ({
             <div className="space-y-2">
               <h3 className="font-bold text-emerald-800 text-lg">ایمیل خود را تایید کنید</h3>
               <p className="text-emerald-700 text-sm leading-relaxed">
-                یک لینک فعال‌سازی به ایمیل شما ارسال شد. لطفاً پوشه ورودی (Inbox) یا هرزنامه (Spam) خود را چک کرده و روی لینک کلیک کنید.
+                یک لینک فعال‌سازی به ایمیل شما ارسال شد. لطفاً پوشه ورودی یا هرزنامه خود را چک کرده و روی لینک کلیک کنید.
               </p>
             </div>
             <button 
@@ -174,8 +172,8 @@ const AuthView = ({
 };
 
 const ApprovalView = ({ user, checkApproval, signOut }: any) => (
-  <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
-    <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-10 space-y-8 border border-slate-100">
+  <div className="min-h-[100dvh] bg-slate-50 flex items-center justify-center p-6 text-center">
+    <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-10 space-y-8 border border-slate-100 animate-in fade-in slide-in-from-bottom-4">
       <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-[1.8rem] flex items-center justify-center mx-auto shadow-lg shadow-amber-500/10 mb-4 animate-pulse">
         <ShieldCheck size={44} />
       </div>
@@ -190,7 +188,6 @@ const ApprovalView = ({ user, checkApproval, signOut }: any) => (
              شما در حال حاضر آفلاین هستید. برای بررسی تاییدیه به اینترنت متصل شوید.
            </div>
         )}
-        <p className="text-slate-400 text-xs">لطفاً پس از دریافت تاییدیه، اپلیکیشن را مجدداً باز کنید.</p>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -232,13 +229,13 @@ const OrderForm = ({ onSubmit, onClose }: any) => {
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-end md:items-center justify-center">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative bg-white rounded-t-[2.5rem] md:rounded-3xl w-full max-w-lg overflow-hidden flex flex-col mobile-bottom-sheet shadow-2xl">
+      <div className="relative bg-white rounded-t-[2.5rem] md:rounded-3xl w-full max-w-lg overflow-hidden flex flex-col mobile-bottom-sheet shadow-2xl max-h-[90dvh]">
         <div className="md:hidden w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 mb-2" />
         <div className="p-6 border-b flex justify-between items-center">
           <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Scissors className="text-indigo-600" /> ثبت سفارش جدید</h2>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20} /></button>
         </div>
-        <form onSubmit={handleFormSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleFormSubmit} className="p-6 space-y-5 overflow-y-auto no-scrollbar">
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 mr-2 uppercase">شرح سفارش (مدل لباس)</label>
             <div className="relative">
@@ -345,7 +342,6 @@ const HistorySheet = ({ orders, transactions, customers, onClose }: any) => {
     const orderEvents = orders.map((o: Order) => ({ ...o, type: 'ORDER' }));
     const txEvents = transactions.map((t: Transaction) => ({ ...t, type: 'TX' }));
     return [...orderEvents, ...txEvents].sort((a, b) => {
-      // Very naive date comparison for IR dates, but works for most cases
       return b.id.localeCompare(a.id);
     }).slice(0, 30);
   }, [orders, transactions]);
@@ -353,7 +349,7 @@ const HistorySheet = ({ orders, transactions, customers, onClose }: any) => {
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-end justify-center">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative bg-white rounded-t-[2.5rem] w-full max-w-xl h-[85vh] overflow-hidden flex flex-col mobile-bottom-sheet shadow-2xl">
+      <div className="relative bg-white rounded-t-[2.5rem] w-full max-w-xl h-[85dvh] overflow-hidden flex flex-col mobile-bottom-sheet shadow-2xl">
         <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 mb-2" />
         <div className="p-6 border-b flex justify-between items-center">
           <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><History className="text-indigo-600" /> تاریخچه آخرین فعالیت‌ها</h2>
@@ -393,7 +389,7 @@ const HistorySheet = ({ orders, transactions, customers, onClose }: any) => {
   );
 };
 
-// --- End of externalized components ---
+// --- Main Application ---
 
 const App: React.FC = () => {
   // Auth States
@@ -432,9 +428,12 @@ const App: React.FC = () => {
   const [autoBackupEnabled, setAutoBackupEnabled] = useState(localStorage.getItem('auto_cloud_backup') === 'true');
 
   const loadAppData = useCallback(async () => {
-    setCustomers(await StorageService.getCustomers());
-    setOrders(await StorageService.getOrders());
-    setTransactions(await StorageService.getTransactions());
+    const custs = await StorageService.getCustomers();
+    const ords = await StorageService.getOrders();
+    const txs = await StorageService.getTransactions();
+    setCustomers(custs);
+    setOrders(ords);
+    setTransactions(txs);
   }, []);
 
   const handleAutoBackupCheck = useCallback(async (userId: string) => {
@@ -463,15 +462,14 @@ const App: React.FC = () => {
     const cachedStatus = localStorage.getItem(cacheKey);
     const lastCheckTs = Number(localStorage.getItem(tsKey) || 0);
 
-    // 1. If Offline: Trust the cached value immediately
     if (!navigator.onLine) {
       const approved = cachedStatus === 'true';
       setIsApproved(approved);
       if (approved) await loadAppData();
+      setAuthLoading(false);
       return;
     }
 
-    // 2. If Online: Check if we need to hit the server
     const needsCheck = forceCheck || !cachedStatus || (now - lastCheckTs > twentyFourHours);
 
     if (needsCheck) {
@@ -482,7 +480,6 @@ const App: React.FC = () => {
         const approved = !!data?.is_approved;
         setIsApproved(approved);
         
-        // Update Cache
         localStorage.setItem(cacheKey, approved.toString());
         localStorage.setItem(tsKey, now.toString());
 
@@ -492,13 +489,11 @@ const App: React.FC = () => {
         }
       } catch (err) {
         console.warn('License check failed online, falling back to cache:', err);
-        // Fallback to cache even if online but server is unreachable
         const approved = cachedStatus === 'true';
         setIsApproved(approved);
         if (approved) await loadAppData();
       }
     } else {
-      // Within 24h window - skip server check
       const approved = cachedStatus === 'true';
       setIsApproved(approved);
       if (approved) {
@@ -506,49 +501,60 @@ const App: React.FC = () => {
         handleAutoBackupCheck(userId);
       }
     }
+    setAuthLoading(false);
   }, [loadAppData, handleAutoBackupCheck]);
 
-  const checkUser = useCallback(async () => {
-    setAuthLoading(true);
-    const session = await AuthService.getSession();
-    if (session) {
-      setUser(session.user);
-      await checkApproval(session.user.id);
-    }
-    setAuthLoading(false);
-  }, [checkApproval]);
-
-  // Initialize Auth & Data
+  // Unified App Initialization
   useEffect(() => {
-    const initApp = async () => {
+    let mounted = true;
+
+    const init = async () => {
       await StorageService.init();
+      if (!mounted) return;
+      
       setIsStoragePersistent(await StorageService.isPersistenceEnabled());
-      await checkUser();
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      if (session?.user) {
+        setUser(session.user);
+        await checkApproval(session.user.id);
+      } else {
+        setAuthLoading(false);
+      }
+
+      // Single listener for auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+        if (!mounted) return;
+        
+        if (newSession?.user) {
+          setUser(newSession.user);
+          await checkApproval(newSession.user.id);
+        } else {
+          setUser(null);
+          setIsApproved(false);
+          setAuthLoading(false);
+        }
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
     };
 
-    initApp();
+    const cleanup = init();
 
-    // Listener for Network Recovery
     const handleOnline = () => {
       if (user) checkApproval(user.id);
     };
     window.addEventListener('online', handleOnline);
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        setUser(session.user);
-        checkApproval(session.user.id);
-      } else {
-        setUser(null);
-        setIsApproved(false);
-      }
-    });
-
     return () => {
-      authListener.subscription.unsubscribe();
+      mounted = false;
       window.removeEventListener('online', handleOnline);
     };
-  }, [user, checkUser, checkApproval]);
+  }, []); // Empty dependency array for stability
 
   const translateAuthError = (err: string) => {
     if (err.includes('Invalid login credentials')) return 'ایمیل یا رمز عبور اشتباه است.';
@@ -573,7 +579,6 @@ const App: React.FC = () => {
       }
     } catch (err: any) {
       setAuthError(translateAuthError(err.message || 'خطای ناشناخته'));
-    } finally {
       setAuthLoading(false);
     }
   };
@@ -706,7 +711,7 @@ const App: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `tailormaster_backup_${new Date().toLocaleDateString('fa-IR').replace(/\//g, '-')}.json`;
+    a.download = `khayatyar_backup_${new Date().toLocaleDateString('fa-IR').replace(/\//g, '-')}.json`;
     a.click();
     setShowBackupModal(false);
   };
@@ -919,148 +924,24 @@ const App: React.FC = () => {
     </div>
   );
 
-  const renderCustomerDetail = () => {
-    if (!selectedCustomer) return null;
-    const customerOrders = orders.filter(o => o.customerId === selectedCustomer.id);
-
-    const tabs: {id: MobileCustomerTab, label: string, icon: any}[] = [
-      { id: 'INFO', label: 'اطلاعات کلی', icon: <User size={18} /> },
-      { id: 'MEASUREMENTS', label: 'اندازه‌ها', icon: <Scissors size={18} /> },
-      { id: 'ORDERS', label: 'سفارشات', icon: <History size={18} /> },
-    ];
-
-    return (
-      <div className="space-y-6 pb-20">
-        <div className="md:hidden flex overflow-x-auto gap-2 no-scrollbar pb-2">
-          {tabs.map(tab => (
-            <button key={tab.id} onClick={() => setActiveCustomerTab(tab.id)} className={`flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all ${activeCustomerTab === tab.id ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-500 border border-slate-100'}`}>
-              {tab.icon} {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {(activeCustomerTab === 'INFO' || activeCustomerTab === 'MEASUREMENTS' || window.innerWidth > 768) && (
-            <div className="lg:col-span-1 space-y-6">
-              {activeCustomerTab === 'INFO' && (
-                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-50 text-center">
-                  <div className="w-24 h-24 bg-indigo-50 text-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-xl"><User size={48} /></div>
-                  <h3 className="text-2xl font-bold text-slate-800 mb-1">{selectedCustomer.name}</h3>
-                  <p className="text-slate-400 mb-6" dir="ltr">{selectedCustomer.phone}</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 p-4 rounded-3xl"><span className="text-[10px] text-slate-400 block mb-1">تعداد سفارش</span><span className="font-bold text-slate-800">{customerOrders.length}</span></div>
-                    <div className="bg-slate-50 p-4 rounded-3xl"><span className="text-[10px] text-slate-400 block mb-1">تراز مالی</span><span className={`font-bold ${selectedCustomer.balance > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{Math.abs(selectedCustomer.balance).toLocaleString()} افغانی</span></div>
-                  </div>
-                </div>
-              )}
-              {(activeCustomerTab === 'MEASUREMENTS' || window.innerWidth > 768) && (
-                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-50">
-                  <div className="flex justify-between items-center mb-6"><h3 className="font-bold text-slate-800">جزئیات اندازه‌ها</h3><button className="text-indigo-600 text-xs font-bold" onClick={() => setShowCustomerForm(true)}>ویرایش</button></div>
-                  <div className="grid grid-cols-2 gap-4">
-                    {Object.entries(selectedCustomer.measurements).map(([key, value]) => value !== undefined && (
-                      <div key={key} className="bg-slate-50 p-3 rounded-2xl flex justify-between items-center"><span className="text-[10px] text-slate-400">{MEASUREMENT_LABELS[key]}</span><span className="font-bold text-slate-800">{value}</span></div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="lg:col-span-2 space-y-6">
-            {(activeCustomerTab === 'ORDERS' || window.innerWidth > 768) && (
-              <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-50">
-                <div className="flex justify-between items-center mb-6"><h3 className="font-bold text-slate-800">تاریخچه سفارشات</h3><button onClick={() => setShowOrderForm(true)} className="w-10 h-10 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg"><Plus size={20}/></button></div>
-                <div className="space-y-4">
-                  {customerOrders.length > 0 ? customerOrders.map(order => (
-                    <div key={order.id} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex gap-3 items-center">
-                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm"><Scissors size={20}/></div>
-                          <div><div className="font-bold text-slate-800">{order.description}</div><div className="text-[10px] text-slate-400 flex gap-2 mt-1"><span>{order.dateCreated}</span>{order.dueDate && <span className="text-rose-500 font-bold"> تحویل: {order.dueDate}</span>}</div></div>
-                        </div>
-                        <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as OrderStatus)} className={`text-[10px] px-3 py-1 rounded-full outline-none font-bold shadow-sm ${STATUS_COLORS[order.status]}`}>
-                          {Object.values(OrderStatus).map(status => <option key={status} value={status}>{status}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                  )) : <div className="text-center text-slate-300 py-10">سفارشی یافت نشد.</div>}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
+  const renderView = () => {
+    switch (view) {
+      case 'DASHBOARD': return renderDashboard();
+      case 'CUSTOMERS': return renderCustomers();
+      case 'ACCOUNTING': return (selectedAccountingCustomerId ? null : renderAccounting()); // Simplified check
+      default: return renderDashboard();
+    }
   };
 
   const renderAccounting = () => {
-    if (selectedAccountingCustomerId && selectedAccountingCustomer) {
-      const customerTransactions = transactions.filter(t => t.customerId === selectedAccountingCustomer.id);
-      
-      return (
-        <div className="space-y-6 pb-20">
-          <div className="flex items-center gap-4 mb-2">
-            <button 
-              onClick={() => setSelectedAccountingCustomerId(null)} 
-              className="p-3 bg-white border border-slate-100 rounded-3xl text-slate-400 hover:text-indigo-600 shadow-sm transition-all"
-            >
-              <ArrowLeft size={24} />
-            </button>
-            <h2 className="text-2xl font-bold text-slate-800">تراکنش‌های {selectedAccountingCustomer.name}</h2>
-          </div>
-
-          <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-slate-50 flex flex-col max-h-[700px]">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-slate-800">حسابداری مشتری</h3>
-              <div className="flex gap-2">
-                <button onClick={() => setShowTransactionForm('DEBT')} className="w-10 h-10 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center shadow-sm hover:bg-rose-100 active:scale-95 transition-all"><Plus size={20} /></button>
-                <button onClick={() => setShowTransactionForm('PAYMENT')} className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-sm hover:bg-emerald-100 active:scale-95 transition-all"><Download size={20} /></button>
-              </div>
-            </div>
-
-            <div className={`p-6 rounded-[2rem] text-white flex justify-between items-center mb-6 shadow-xl transition-all ${selectedAccountingCustomer.balance > 0 ? 'bg-rose-600 shadow-rose-600/20' : selectedAccountingCustomer.balance < 0 ? 'bg-emerald-600 shadow-emerald-600/20' : 'bg-slate-900 shadow-slate-900/20'}`}>
-              <div className="flex flex-col">
-                <span className="text-[10px] text-white/70 font-bold uppercase tracking-widest mb-1">وضعیت تراز نهایی</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full w-fit bg-white/20">
-                  {selectedAccountingCustomer.balance > 0 ? '🔴 بدهکار' : selectedAccountingCustomer.balance < 0 ? '🟢 بستانکار' : '⚪ تسویه'}
-                </span>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold drop-shadow-sm">{Math.abs(selectedAccountingCustomer.balance).toLocaleString()} افغانی</div>
-                <span className="text-[9px] text-white/60 font-medium">موجودی فعلی مشتری</span>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pr-1">
-              {customerTransactions.slice().reverse().map((tx) => (
-                <div key={tx.id} className="p-3.5 bg-slate-50/70 rounded-2xl flex justify-between items-center border border-slate-100/50 hover:bg-white transition-colors group">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform ${tx.amount > 0 ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                      {tx.amount > 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                    </div>
-                    <div>
-                      <div className="text-[11px] font-bold text-slate-800 leading-tight">{tx.description}</div>
-                      <div className="text-[9px] text-slate-400 mt-0.5">{tx.date}</div>
-                    </div>
-                  </div>
-                  <div className={`text-xs font-bold ${tx.amount > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                    {tx.amount > 0 ? '+' : '-'}{Math.abs(tx.amount).toLocaleString()} افغانی
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
+    // Shared list for choosing customer in accounting
     return (
       <div className="space-y-6">
         <div className="relative mb-6">
           <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
           <input 
             type="text" 
-            placeholder="جستجوی مشتری برای تراز مالی..." 
+            placeholder="جستجوی مشتری..." 
             value={accountingSearchTerm} 
             onChange={(e) => setAccountingSearchTerm(e.target.value)} 
             className="w-full pr-12 pl-6 py-4 bg-white border border-slate-100 shadow-sm rounded-3xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all" 
@@ -1076,9 +957,6 @@ const App: React.FC = () => {
                  </div>
                  <div className="text-right">
                    <div className={`font-bold ${c.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{Math.abs(c.balance).toLocaleString()} افغانی</div>
-                   <span className={`text-[10px] px-3 py-0.5 rounded-full font-bold ${c.balance > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                     {c.balance > 0 ? 'بدهکار' : c.balance < 0 ? 'بستانکار' : 'تسویه'}
-                   </span>
                  </div>
                </div>
              ))}
@@ -1088,19 +966,9 @@ const App: React.FC = () => {
     );
   };
 
-  const renderView = () => {
-    switch (view) {
-      case 'DASHBOARD': return renderDashboard();
-      case 'CUSTOMERS': return renderCustomers();
-      case 'ACCOUNTING': return renderAccounting();
-      case 'CUSTOMER_DETAIL': return renderCustomerDetail();
-      default: return renderDashboard();
-    }
-  };
-
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="h-[100dvh] flex items-center justify-center bg-slate-50">
         <Loader2 className="animate-spin text-indigo-600" size={40} />
       </div>
     );
@@ -1128,205 +996,112 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#f8fafc]">
-      <aside className="hidden md:flex w-80 bg-slate-950 text-white flex-col p-8 sticky top-0 h-screen border-l border-white/5">
-        <div className="flex items-center gap-4 mb-14 px-2"><div className="bg-indigo-600 p-3 rounded-2xl shadow-2xl shadow-indigo-600/30"><Scissors size={28} /></div><h1 className="text-2xl font-bold tracking-tight text-white">TailorMaster</h1></div>
+    <div className="h-[100dvh] flex flex-col md:flex-row bg-[#f8fafc] overflow-hidden">
+      {/* Sidebar Desktop */}
+      <aside className="hidden md:flex w-80 bg-slate-950 text-white flex-col p-8 sticky top-0 h-full border-l border-white/5">
+        <div className="flex items-center gap-4 mb-14 px-2">
+          <div className="bg-indigo-600 p-3 rounded-2xl shadow-2xl shadow-indigo-600/30">
+            <Scissors size={28} />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">خیاطیار</h1>
+        </div>
         <nav className="space-y-3 flex-1">
           {NAVIGATION_ITEMS.map((item) => (
             <button 
               key={item.id} 
-              onClick={() => { 
-                setView(item.id as AppView); 
-                setSelectedCustomerId(null); 
-                setSelectedAccountingCustomerId(null);
-              }} 
-              className={`w-full flex items-center gap-4 px-6 py-4 rounded-[1.5rem] transition-all duration-300 group ${view === item.id || (view === 'CUSTOMER_DETAIL' && item.id === 'CUSTOMERS') ? 'bg-indigo-600 text-white shadow-2xl shadow-indigo-600/20 translate-x-1' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+              onClick={() => { setView(item.id as AppView); setSelectedCustomerId(null); setSelectedAccountingCustomerId(null); }} 
+              className={`w-full flex items-center gap-4 px-6 py-4 rounded-[1.5rem] transition-all duration-300 group ${view === item.id ? 'bg-indigo-600 text-white shadow-2xl shadow-indigo-600/20 translate-x-1' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
             >
-              <div className="transition-colors">{item.icon}</div><span className="font-bold tracking-tight">{item.label}</span>
+              {item.icon}<span className="font-bold tracking-tight">{item.label}</span>
             </button>
           ))}
         </nav>
-        <div className="mt-auto pt-8 border-t border-white/10 flex items-center gap-4 flex-col items-start">
+        <div className="mt-auto pt-8 border-t border-white/10">
            <button onClick={() => setShowBackupModal(true)} className="w-full flex items-center gap-4 px-6 py-4 text-slate-500 hover:text-emerald-400 transition-colors">
               <Database size={20}/>
               <span className="font-bold">مدیریت پشتیبان</span>
            </button>
            <div className="w-full flex items-center gap-4 px-2 mt-4">
               <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-indigo-400"><User size={24} /></div>
-              <div className="overflow-hidden"><div className="text-white font-bold">پنل کاربری</div><div className="text-[10px] text-slate-500 tracking-widest uppercase truncate">{user.email}</div></div>
+              <div className="overflow-hidden">
+                <div className="text-white font-bold">پنل کاربری</div>
+                <div className="text-[10px] text-slate-500 truncate">{user.email}</div>
+              </div>
            </div>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         <header className="md:hidden sticky top-0 z-[60] bg-white/80 backdrop-blur-lg px-6 py-4 flex items-center justify-between border-b border-slate-100 pb-safe">
           <div className="flex items-center gap-4">
-            {view === 'CUSTOMER_DETAIL' ? (
-              <button onClick={() => setView('CUSTOMERS')} className="p-2 bg-slate-100 rounded-2xl text-slate-700">
-                <ChevronRight size={20} />
-              </button>
-            ) : (
-               <div className="bg-indigo-600 p-2 rounded-xl text-white">
-                  <Scissors size={20} />
-               </div>
-            )}
-            <h1 className="text-xl font-bold text-slate-800">
-              {view === 'CUSTOMER_DETAIL' ? selectedCustomer?.name : NAVIGATION_ITEMS.find(n => n.id === view)?.label}
-            </h1>
+            <div className="bg-indigo-600 p-2 rounded-xl text-white">
+              <Scissors size={20} />
+            </div>
+            <h1 className="text-xl font-bold text-slate-800">خیاطیار</h1>
           </div>
           <div className="flex items-center gap-2">
-            {!navigator.onLine && <div className="p-1 px-2 bg-amber-100 text-amber-700 text-[8px] font-bold rounded-lg flex items-center gap-1"><AlertCircle size={10} /> آفلاین</div>}
-            <button onClick={() => setShowBackupModal(true)} className="p-2 text-slate-400 hover:text-emerald-600 transition-colors"><Database size={24} /></button>
-            <button onClick={() => setShowHistorySheet(true)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><History size={24} /></button>
+            {!navigator.onLine && <div className="p-1 px-2 bg-amber-100 text-amber-700 text-[8px] font-bold rounded-lg flex items-center gap-1">آفلاین</div>}
+            <button onClick={() => setShowHistorySheet(true)} className="p-2 text-slate-400"><History size={24} /></button>
           </div>
         </header>
 
-        <main className="flex-1 p-6 md:p-12 overflow-y-auto no-scrollbar">
-          <div className="hidden md:flex justify-between items-center mb-10">
-            <div>
-              <h2 className="text-4xl font-bold text-slate-900 mb-2">
-                {selectedCustomerId ? (
-                  <div className="flex items-center gap-4">
-                    <button onClick={() => setView('CUSTOMERS')} className="p-3 bg-white border border-slate-100 rounded-3xl text-slate-400 hover:text-indigo-600 shadow-sm transition-all">
-                      <ChevronRight size={28} />
-                    </button>
-                    {selectedCustomer?.name}
-                  </div>
-                ) : (view === 'ACCOUNTING' && selectedAccountingCustomerId) ? (
-                  <div className="flex items-center gap-4">
-                    <button onClick={() => setSelectedAccountingCustomerId(null)} className="p-3 bg-white border border-slate-100 rounded-3xl text-slate-400 hover:text-indigo-600 shadow-sm transition-all">
-                      <ChevronRight size={28} />
-                    </button>
-                    حسابداری: {selectedAccountingCustomer?.name}
-                  </div>
-                ) : NAVIGATION_ITEMS.find(n => n.id === view)?.label}
-              </h2>
-            </div>
-            {!selectedCustomerId && !selectedAccountingCustomerId && (
-              <div className="flex items-center gap-3">
-                {!navigator.onLine && <div className="p-2 px-4 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-2xl border border-amber-100 flex items-center gap-2 animate-pulse"><AlertCircle size={16} /> حالت آفلاین فعال است</div>}
-                <button onClick={() => setShowBackupModal(true)} className="p-4 bg-white border border-slate-100 rounded-3xl text-slate-500 hover:text-emerald-600 shadow-sm transition-all"><Database size={24} /></button>
-                <button onClick={() => setShowHistorySheet(true)} className="p-4 bg-white border border-slate-100 rounded-3xl text-slate-500 hover:text-indigo-600 shadow-sm transition-all"><History size={24} /></button>
-              </div>
-            )}
+        <main className="flex-1 p-6 md:p-12 overflow-y-auto no-scrollbar pb-24 md:pb-12">
+          <div className="max-w-6xl mx-auto">
+            {renderView()}
           </div>
-          <div className="max-w-6xl mx-auto">{renderView()}</div>
         </main>
         
+        {/* Mobile Nav */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-nav px-6 py-3 flex justify-between items-center z-[70] pb-safe rounded-t-[2rem] shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
           {NAVIGATION_ITEMS.map((item) => (
             <button
               key={item.id}
-              onClick={() => {
-                setView(item.id as AppView);
-                setSelectedCustomerId(null);
-                setSelectedAccountingCustomerId(null);
-              }}
-              className={`flex flex-col items-center gap-1.5 transition-all relative ${view === item.id || (view === 'CUSTOMER_DETAIL' && item.id === 'CUSTOMERS') ? 'text-indigo-600' : 'text-slate-400'}`}
+              onClick={() => { setView(item.id as AppView); setSelectedCustomerId(null); setSelectedAccountingCustomerId(null); }}
+              className={`flex flex-col items-center gap-1.5 transition-all ${view === item.id ? 'text-indigo-600' : 'text-slate-400'}`}
             >
-              <div className={`p-2 rounded-2xl transition-all ${view === item.id || (view === 'CUSTOMER_DETAIL' && item.id === 'CUSTOMERS') ? 'bg-indigo-50' : ''}`}>
-                {React.cloneElement(item.icon as React.ReactElement<{ size?: number }>, { size: 22 })}
+              <div className={`p-2 rounded-2xl ${view === item.id ? 'bg-indigo-50' : ''}`}>
+                {React.cloneElement(item.icon as React.ReactElement<any>, { size: 22 })}
               </div>
-              <span className="text-[10px] font-bold tracking-tight">{item.label}</span>
+              <span className="text-[10px] font-bold">{item.label}</span>
             </button>
           ))}
         </nav>
       </div>
 
       {showCustomerForm && <CustomerForm onSave={handleAddCustomer} onClose={() => setShowCustomerForm(false)} initialData={selectedCustomer || undefined} />}
-      
       {showOrderForm && <OrderForm onSubmit={handleCreateOrder} onClose={() => setShowOrderForm(false)} />}
-
       {showTransactionForm && <TransactionForm type={showTransactionForm} onSubmit={handleAddTransaction} onClose={() => setShowTransactionForm(null)} />}
-
       {showHistorySheet && <HistorySheet orders={orders} transactions={transactions} customers={customers} onClose={() => setShowHistorySheet(false)} />}
 
+      {/* Backup Modal */}
       {showBackupModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-end md:items-center justify-center">
-          <div className="absolute inset-0" onClick={() => { if (!cloudActionLoading) setShowBackupModal(false); }} />
-          <div className="relative bg-white rounded-t-[2.5rem] md:rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto no-scrollbar flex flex-col mobile-bottom-sheet shadow-2xl p-6">
+          <div className="absolute inset-0" onClick={() => setShowBackupModal(false)} />
+          <div className="relative bg-white rounded-t-[2.5rem] md:rounded-3xl w-full max-w-xl max-h-[90dvh] overflow-y-auto no-scrollbar p-6 shadow-2xl">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-slate-800">مدیریت پشتیبان و داده‌ها</h2>
-              <button onClick={() => setShowBackupModal(false)} disabled={cloudActionLoading} className="p-2 hover:bg-slate-100 rounded-full disabled:opacity-50"><X size={20}/></button>
+              <h2 className="text-xl font-bold text-slate-800">مدیریت داده‌ها</h2>
+              <button onClick={() => setShowBackupModal(false)} className="p-2"><X size={20}/></button>
             </div>
-            
             <div className="space-y-6">
-              {/* Storage Security Indicator */}
-              <div className={`p-4 rounded-2xl flex items-center gap-3 border transition-all ${isStoragePersistent ? 'bg-indigo-50 border-indigo-100 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isStoragePersistent ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-200 text-slate-400'}`}>
-                  {isStoragePersistent ? <ShieldCheck size={22} /> : <Database size={22} />}
-                </div>
-                <div className="flex-1">
-                  <div className="text-[11px] font-bold">وضعیت حافظه: {isStoragePersistent ? 'دائمی و فوق امن' : 'معمولی (قابل پاک شدن)'}</div>
-                  <div className="text-[9px] opacity-70 mt-0.5">{isStoragePersistent ? 'مرورگر داده‌های خیاطی شما را پاک نخواهد کرد.' : 'مرورگر ممکن است در صورت کمبود فضا داده‌ها را پاک کند.'}</div>
-                </div>
-                {isStoragePersistent && <CheckCircle2 size={16} className="text-indigo-600" />}
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={handleCloudBackup} disabled={!navigator.onLine} className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex flex-col items-center gap-2">
+                  <UploadCloud className="text-indigo-600" />
+                  <span className="text-[10px] font-bold">پشتیبان ابری</span>
+                </button>
+                <button onClick={handleCloudRestore} disabled={!navigator.onLine} className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex flex-col items-center gap-2">
+                  <RefreshCw className="text-blue-600" />
+                  <span className="text-[10px] font-bold">بازیابی ابری</span>
+                </button>
               </div>
-
-              <div className="space-y-4">
-                <h3 className="text-xs font-bold text-indigo-600 uppercase tracking-widest">پشتیبان‌گیری ابری (Supabase)</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <button 
-                    onClick={handleCloudBackup} 
-                    disabled={cloudActionLoading || !navigator.onLine} 
-                    className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex flex-col items-center gap-2 group hover:bg-indigo-100 transition-all disabled:opacity-60"
-                  >
-                    {cloudActionLoading && cloudStatus.type === 'info' && cloudStatus.message.includes('ارسال') ? (
-                      <Loader2 className="animate-spin text-indigo-600" size={24} />
-                    ) : (
-                      <UploadCloud className="text-indigo-600 group-hover:scale-110 transition-transform" />
-                    )}
-                    <span className="text-[10px] font-bold">ارسال به ابر</span>
-                  </button>
-                  <button 
-                    onClick={handleCloudRestore} 
-                    disabled={cloudActionLoading || !navigator.onLine} 
-                    className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex flex-col items-center gap-2 group hover:bg-blue-100 transition-all disabled:opacity-60"
-                  >
-                    {cloudActionLoading && cloudStatus.type === 'info' && cloudStatus.message.includes('بازیابی') ? (
-                      <Loader2 className="animate-spin text-blue-600" size={24} />
-                    ) : (
-                      <RefreshCw className="text-blue-600 group-hover:scale-110 transition-transform" />
-                    )}
-                    <span className="text-[10px] font-bold">بازیابی از ابر</span>
-                  </button>
+              
+              {cloudStatus.type && (
+                <div className={`p-3 rounded-xl text-[10px] font-bold flex items-center gap-2 ${cloudStatus.type === 'success' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                  {cloudStatus.message}
                 </div>
-                
-                {/* Cloud Status Message Area */}
-                {cloudStatus.type && (
-                  <div className={`p-3 rounded-xl text-[10px] font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-1 ${
-                    cloudStatus.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                    cloudStatus.type === 'error' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
-                    'bg-slate-50 text-slate-600 border border-slate-100'
-                  }`}>
-                    {cloudStatus.type === 'info' && <Loader2 className="animate-spin" size={14} />}
-                    {cloudStatus.type === 'success' && <CheckCircle2 size={14} />}
-                    {cloudStatus.type === 'error' && <AlertCircle size={14} />}
-                    {cloudStatus.message}
-                  </div>
-                )}
+              )}
 
-                <div className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between">
-                  <div className="text-[10px] font-bold text-slate-700">پشتیبان‌گیری خودکار ۲۴ ساعته</div>
-                  <button onClick={toggleAutoBackup}>{autoBackupEnabled ? <ToggleRight size={32} className="text-indigo-600"/> : <ToggleLeft size={32} className="text-slate-300"/>}</button>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                 <h3 className="text-xs font-bold text-emerald-600 uppercase tracking-widest">پشتیبان‌گیری محلی (فایل JSON)</h3>
-                 <div className="grid grid-cols-2 gap-3">
-                   <button onClick={handleExportData} className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex flex-col items-center gap-2 hover:bg-emerald-100 transition-all">
-                     <Download className="text-emerald-600" />
-                     <span className="text-[10px] font-bold">دانلود فایل</span>
-                   </button>
-                   <label className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all">
-                     <input type="file" className="hidden" accept=".json" onChange={handleImportData} />
-                     <UploadCloud className="text-slate-600" />
-                     <span className="text-[10px] font-bold">بارگذاری فایل</span>
-                   </label>
-                 </div>
-              </div>
-              <button onClick={() => AuthService.signOut()} className="w-full py-4 bg-rose-50 text-rose-600 rounded-2xl font-bold flex items-center justify-center gap-2 mt-4 hover:bg-rose-100 transition-all"><LogOut size={18}/> خروج از حساب</button>
+              <button onClick={() => AuthService.signOut()} className="w-full py-4 bg-rose-50 text-rose-600 rounded-2xl font-bold flex items-center justify-center gap-2"><LogOut size={18}/> خروج از حساب</button>
             </div>
           </div>
         </div>
