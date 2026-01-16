@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Customer, 
   Order, 
@@ -184,12 +184,18 @@ const ApprovalView = ({ user, checkApproval, signOut }: any) => (
         <p className="text-slate-500 text-sm leading-relaxed">
           حساب کاربری شما با موفقیت ساخته شد. برای استفاده از اپلیکیشن، مدیر باید دسترسی شما را تایید کند.
         </p>
+        {!navigator.onLine && (
+           <div className="p-3 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-xl flex items-center gap-2 justify-center">
+             <AlertCircle size={14} />
+             شما در حال حاضر آفلاین هستید. برای بررسی تاییدیه به اینترنت متصل شوید.
+           </div>
+        )}
         <p className="text-slate-400 text-xs">لطفاً پس از دریافت تاییدیه، اپلیکیشن را مجدداً باز کنید.</p>
       </div>
 
       <div className="flex flex-col gap-3">
          <button 
-          onClick={() => checkApproval(user.id)}
+          onClick={() => checkApproval(user.id, true)}
           className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
          >
            <RefreshCw size={18} />
@@ -425,59 +431,13 @@ const App: React.FC = () => {
 
   const [autoBackupEnabled, setAutoBackupEnabled] = useState(localStorage.getItem('auto_cloud_backup') === 'true');
 
-  // Initialize Auth & Data
-  useEffect(() => {
-    const initApp = async () => {
-      await StorageService.init();
-      setIsStoragePersistent(await StorageService.isPersistenceEnabled());
-      await checkUser();
-    };
-
-    initApp();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        setUser(session.user);
-        checkApproval(session.user.id);
-      } else {
-        setUser(null);
-        setIsApproved(false);
-      }
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  const checkUser = async () => {
-    setAuthLoading(true);
-    const session = await AuthService.getSession();
-    if (session) {
-      setUser(session.user);
-      await checkApproval(session.user.id);
-    }
-    setAuthLoading(false);
-  };
-
-  const checkApproval = async (userId: string) => {
-    const { data } = await AuthService.getProfile(userId);
-    if (data?.is_approved) {
-      setIsApproved(true);
-      await loadAppData();
-      handleAutoBackupCheck(userId);
-    } else {
-      setIsApproved(false);
-    }
-  };
-
-  const loadAppData = async () => {
+  const loadAppData = useCallback(async () => {
     setCustomers(await StorageService.getCustomers());
     setOrders(await StorageService.getOrders());
     setTransactions(await StorageService.getTransactions());
-  };
+  }, []);
 
-  const handleAutoBackupCheck = async (userId: string) => {
+  const handleAutoBackupCheck = useCallback(async (userId: string) => {
     const isEnabled = localStorage.getItem('auto_cloud_backup') === 'true';
     if (!isEnabled) return;
 
@@ -491,7 +451,104 @@ const App: React.FC = () => {
         localStorage.setItem('last_auto_backup_ts', now.toString());
       }
     }
-  };
+  }, []);
+
+  // --- Optimized License & Approval Check ---
+  const checkApproval = useCallback(async (userId: string, forceCheck: boolean = false) => {
+    const now = Date.now();
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    const cacheKey = `approval_cache_${userId}`;
+    const tsKey = `approval_ts_${userId}`;
+    
+    const cachedStatus = localStorage.getItem(cacheKey);
+    const lastCheckTs = Number(localStorage.getItem(tsKey) || 0);
+
+    // 1. If Offline: Trust the cached value immediately
+    if (!navigator.onLine) {
+      const approved = cachedStatus === 'true';
+      setIsApproved(approved);
+      if (approved) await loadAppData();
+      return;
+    }
+
+    // 2. If Online: Check if we need to hit the server
+    const needsCheck = forceCheck || !cachedStatus || (now - lastCheckTs > twentyFourHours);
+
+    if (needsCheck) {
+      try {
+        const { data, error } = await AuthService.getProfile(userId);
+        if (error) throw error;
+
+        const approved = !!data?.is_approved;
+        setIsApproved(approved);
+        
+        // Update Cache
+        localStorage.setItem(cacheKey, approved.toString());
+        localStorage.setItem(tsKey, now.toString());
+
+        if (approved) {
+          await loadAppData();
+          handleAutoBackupCheck(userId);
+        }
+      } catch (err) {
+        console.warn('License check failed online, falling back to cache:', err);
+        // Fallback to cache even if online but server is unreachable
+        const approved = cachedStatus === 'true';
+        setIsApproved(approved);
+        if (approved) await loadAppData();
+      }
+    } else {
+      // Within 24h window - skip server check
+      const approved = cachedStatus === 'true';
+      setIsApproved(approved);
+      if (approved) {
+        await loadAppData();
+        handleAutoBackupCheck(userId);
+      }
+    }
+  }, [loadAppData, handleAutoBackupCheck]);
+
+  const checkUser = useCallback(async () => {
+    setAuthLoading(true);
+    const session = await AuthService.getSession();
+    if (session) {
+      setUser(session.user);
+      await checkApproval(session.user.id);
+    }
+    setAuthLoading(false);
+  }, [checkApproval]);
+
+  // Initialize Auth & Data
+  useEffect(() => {
+    const initApp = async () => {
+      await StorageService.init();
+      setIsStoragePersistent(await StorageService.isPersistenceEnabled());
+      await checkUser();
+    };
+
+    initApp();
+
+    // Listener for Network Recovery
+    const handleOnline = () => {
+      if (user) checkApproval(user.id);
+    };
+    window.addEventListener('online', handleOnline);
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        setUser(session.user);
+        checkApproval(session.user.id);
+      } else {
+        setUser(null);
+        setIsApproved(false);
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [user, checkUser, checkApproval]);
 
   const translateAuthError = (err: string) => {
     if (err.includes('Invalid login credentials')) return 'ایمیل یا رمز عبور اشتباه است.';
@@ -838,7 +895,7 @@ const App: React.FC = () => {
                 {activeMeasures.map(([key, value]) => (
                   <div 
                     key={key} 
-                    className="bg-slate-50/80 px-1.5 py-1 rounded-md border border-slate-100 flex flex-col items-center justify-center min-w-[40px]"
+                    className="bg-slate-50/80 px-1.5 py-1 rounded-md border border-slate-100 flex items-center justify-center min-w-[40px]"
                   >
                     <span className="text-[8px] text-slate-400 font-bold leading-none mb-1 truncate w-full text-center">
                       {MEASUREMENT_LABELS[key] || key}
@@ -1118,6 +1175,7 @@ const App: React.FC = () => {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            {!navigator.onLine && <div className="p-1 px-2 bg-amber-100 text-amber-700 text-[8px] font-bold rounded-lg flex items-center gap-1"><AlertCircle size={10} /> آفلاین</div>}
             <button onClick={() => setShowBackupModal(true)} className="p-2 text-slate-400 hover:text-emerald-600 transition-colors"><Database size={24} /></button>
             <button onClick={() => setShowHistorySheet(true)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><History size={24} /></button>
           </div>
@@ -1146,6 +1204,7 @@ const App: React.FC = () => {
             </div>
             {!selectedCustomerId && !selectedAccountingCustomerId && (
               <div className="flex items-center gap-3">
+                {!navigator.onLine && <div className="p-2 px-4 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-2xl border border-amber-100 flex items-center gap-2 animate-pulse"><AlertCircle size={16} /> حالت آفلاین فعال است</div>}
                 <button onClick={() => setShowBackupModal(true)} className="p-4 bg-white border border-slate-100 rounded-3xl text-slate-500 hover:text-emerald-600 shadow-sm transition-all"><Database size={24} /></button>
                 <button onClick={() => setShowHistorySheet(true)} className="p-4 bg-white border border-slate-100 rounded-3xl text-slate-500 hover:text-indigo-600 shadow-sm transition-all"><History size={24} /></button>
               </div>
@@ -1209,7 +1268,7 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <button 
                     onClick={handleCloudBackup} 
-                    disabled={cloudActionLoading} 
+                    disabled={cloudActionLoading || !navigator.onLine} 
                     className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex flex-col items-center gap-2 group hover:bg-indigo-100 transition-all disabled:opacity-60"
                   >
                     {cloudActionLoading && cloudStatus.type === 'info' && cloudStatus.message.includes('ارسال') ? (
@@ -1221,7 +1280,7 @@ const App: React.FC = () => {
                   </button>
                   <button 
                     onClick={handleCloudRestore} 
-                    disabled={cloudActionLoading} 
+                    disabled={cloudActionLoading || !navigator.onLine} 
                     className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex flex-col items-center gap-2 group hover:bg-blue-100 transition-all disabled:opacity-60"
                   >
                     {cloudActionLoading && cloudStatus.type === 'info' && cloudStatus.message.includes('بازیابی') ? (
