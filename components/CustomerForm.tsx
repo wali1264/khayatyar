@@ -8,9 +8,10 @@ interface CustomerFormProps {
   onSave: (customer: Partial<Customer>) => void;
   onClose: () => void;
   initialData?: Customer;
+  visibleFields?: string[];
 }
 
-const CustomerForm: React.FC<CustomerFormProps> = ({ onSave, onClose, initialData }) => {
+const CustomerForm: React.FC<CustomerFormProps> = ({ onSave, onClose, initialData, visibleFields }) => {
   const [name, setName] = useState(initialData?.name || '');
   const [phone, setPhone] = useState(initialData?.phone || '');
   const [measurements, setMeasurements] = useState<Measurements>(initialData?.measurements || {});
@@ -33,13 +34,16 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ onSave, onClose, initialDat
     });
   };
 
+  // فیلتر کردن فیلدها بر اساس تنظیمات (اگر تنظیماتی نبود همه را نشان بده)
+  const fieldsToRender = Object.entries(MEASUREMENT_LABELS).filter(([key]) => 
+    !visibleFields || visibleFields.includes(key)
+  );
+
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-end md:items-center justify-center">
-      {/* Background Overlay Click to Close */}
       <div className="absolute inset-0" onClick={onClose} />
       
       <div className="relative bg-white rounded-t-[2.5rem] md:rounded-3xl w-full max-w-2xl max-h-[92vh] md:max-h-[85vh] overflow-hidden flex flex-col mobile-bottom-sheet shadow-2xl">
-        {/* Handle for mobile bottom sheet (Smaller and closer to top) */}
         <div className="md:hidden w-10 h-1 bg-slate-200 rounded-full mx-auto mt-3 mb-1" />
         
         <div className="px-6 py-3 border-b flex justify-between items-center">
@@ -53,7 +57,6 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ onSave, onClose, initialDat
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-5 no-scrollbar">
-          {/* Main Info - Compact Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="block text-[10px] font-bold text-slate-400 mr-2 uppercase">نام مشتری</label>
@@ -86,9 +89,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ onSave, onClose, initialDat
               <span className="text-[10px] text-slate-400 font-medium">(سانتی‌متر)</span>
             </div>
             
-            {/* 3 columns on mobile, 4 on desktop */}
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
-              {Object.entries(MEASUREMENT_LABELS).map(([key, label]) => (
+              {fieldsToRender.map(([key, label]) => (
                 <div key={key} className="space-y-0.5">
                   <label className="block text-[10px] font-bold text-slate-500 mr-1 truncate">{label}</label>
                   <input 
@@ -102,13 +104,17 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ onSave, onClose, initialDat
                 </div>
               ))}
             </div>
+            
+            {fieldsToRender.length === 0 && (
+              <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                <p className="text-[10px] font-bold text-slate-400">هیچ فیلدی فعال نیست. از بخش تنظیمات فیلدهای مورد نظر را فعال کنید.</p>
+              </div>
+            )}
           </div>
           
-          {/* Bottom spacer for floating buttons */}
           <div className="h-20 md:hidden"></div>
         </form>
 
-        {/* Floating Glass Footer for Buttons */}
         <div className="absolute bottom-0 left-0 right-0 p-4 bg-white/60 backdrop-blur-md border-t border-white/20 flex justify-center gap-2 pb-safe">
           <button 
             type="button" 

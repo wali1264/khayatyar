@@ -2,7 +2,7 @@
 import { Customer, Order, Transaction } from '../types';
 
 const DB_NAME = 'KhayatiyarDB';
-const DB_VERSION = 2; // ارتقا نسخه برای تغییرات جدید
+const DB_VERSION = 2; 
 const STORE_NAME = 'KhayatiyarStore';
 
 const STORAGE_KEYS = {
@@ -10,7 +10,8 @@ const STORAGE_KEYS = {
   ORDERS: 'tailor_orders',
   TRANSACTIONS: 'tailor_transactions',
   APPROVAL_CACHE: 'approval_status_cache',
-  MIGRATION_DONE: 'migration_v1_done'
+  MIGRATION_DONE: 'migration_v1_done',
+  VISIBLE_MEASUREMENTS: 'visible_measurements_config'
 };
 
 interface ApprovalCache {
@@ -70,17 +71,12 @@ const db = new TailorDB();
 
 export const StorageService = {
   init: async () => {
-    // درخواست جدی برای حافظه دائمی از مرورگر
     if (navigator.storage && navigator.storage.persist) {
-      const isPersisted = await navigator.storage.persist();
-      console.log(`Storage Persistence: ${isPersisted ? 'Permanent (Safe)' : 'Temporary'}`);
+      await navigator.storage.persist();
     }
 
-    // مهاجرت داده‌ها از حافظه موقت (LocalStorage) به حافظه دائمی (IndexedDB)
     const migrationDone = await db.get<boolean>(STORAGE_KEYS.MIGRATION_DONE);
     if (!migrationDone) {
-      console.log('در حال انتقال داده‌ها به حافظه دائمی خیاطیار...');
-      
       const oldCustomers = localStorage.getItem(STORAGE_KEYS.CUSTOMERS);
       const oldOrders = localStorage.getItem(STORAGE_KEYS.ORDERS);
       const oldTxs = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
@@ -114,7 +110,6 @@ export const StorageService = {
     await db.set(STORAGE_KEYS.TRANSACTIONS, transactions);
   },
 
-  // متدهای جدید برای مدیریت تاییدیه آفلاین
   getApprovalCache: async (): Promise<ApprovalCache | null> => {
     return await db.get<ApprovalCache>(STORAGE_KEYS.APPROVAL_CACHE);
   },
@@ -123,6 +118,15 @@ export const StorageService = {
       status,
       timestamp: Date.now()
     });
+  },
+
+  // تنظیمات فیلدهای اندازه‌گیری
+  getVisibleMeasurements: async (allKeys: string[]): Promise<string[]> => {
+    const saved = await db.get<string[]>(STORAGE_KEYS.VISIBLE_MEASUREMENTS);
+    return saved || allKeys;
+  },
+  saveVisibleMeasurements: async (keys: string[]) => {
+    await db.set(STORAGE_KEYS.VISIBLE_MEASUREMENTS, keys);
   },
 
   isPersistenceEnabled: async (): Promise<boolean> => {

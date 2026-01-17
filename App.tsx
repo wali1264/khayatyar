@@ -48,7 +48,9 @@ import {
   Calendar,
   DollarSign,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Settings,
+  Check
 } from 'lucide-react';
 import CustomerForm from './components/CustomerForm';
 
@@ -387,6 +389,55 @@ const HistorySheet = ({ orders, transactions, customers, onClose }: any) => {
   );
 };
 
+const SettingsModal = ({ visibleFields, setVisibleFields, onClose }: any) => {
+  const toggleField = (key: string) => {
+    let newFields;
+    if (visibleFields.includes(key)) {
+      newFields = visibleFields.filter((f: string) => f !== key);
+    } else {
+      newFields = [...visibleFields, key];
+    }
+    setVisibleFields(newFields);
+    StorageService.saveVisibleMeasurements(newFields);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-end md:items-center justify-center">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="relative bg-white rounded-t-[2.5rem] md:rounded-3xl w-full max-w-xl max-h-[85vh] overflow-hidden flex flex-col mobile-bottom-sheet shadow-2xl">
+        <div className="md:hidden w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 mb-2" />
+        <div className="p-6 border-b flex justify-between items-center">
+          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Settings className="text-indigo-600" /> تنظیمات فیلدهای اندازه‌گیری</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-2 no-scrollbar">
+          <p className="text-[10px] font-bold text-slate-400 mb-4 bg-indigo-50 p-3 rounded-xl border border-indigo-100">فیلدهایی را که می‌خواهید در فرم ثبت مشتری و نمایش اندازه‌ها دیده شوند، علامت بزنید.</p>
+          <div className="grid grid-cols-1 gap-2">
+            {Object.entries(MEASUREMENT_LABELS).map(([key, label]) => {
+              const isActive = visibleFields.includes(key);
+              return (
+                <button 
+                  key={key} 
+                  onClick={() => toggleField(key)}
+                  className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isActive ? 'bg-indigo-50 border-indigo-100' : 'bg-slate-50 border-slate-100 grayscale opacity-60'}`}
+                >
+                  <span className={`text-sm font-bold ${isActive ? 'text-indigo-800' : 'text-slate-500'}`}>{label}</span>
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isActive ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-transparent'}`}>
+                    <Check size={16} />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="p-6 border-t bg-slate-50/50">
+          <button onClick={onClose} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-600/20">تایید و بستن</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- End of externalized components ---
 
 const App: React.FC = () => {
@@ -405,6 +456,7 @@ const App: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [visibleFields, setVisibleFields] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [accountingSearchTerm, setAccountingSearchTerm] = useState('');
   const [dashboardFilter, setDashboardFilter] = useState<DashboardFilter>('ALL');
@@ -415,6 +467,7 @@ const App: React.FC = () => {
   const [showTransactionForm, setShowTransactionForm] = useState(null as 'DEBT' | 'PAYMENT' | null);
   const [showHistorySheet, setShowHistorySheet] = useState(false);
   const [showBackupModal, setShowBackupModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [cloudActionLoading, setCloudActionLoading] = useState(false);
   const [isStoragePersistent, setIsStoragePersistent] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<{ message: string; type: 'info' | 'success' | 'error' | null }>({ message: '', type: null });
@@ -430,6 +483,9 @@ const App: React.FC = () => {
     const initApp = async () => {
       await StorageService.init();
       setIsStoragePersistent(await StorageService.isPersistenceEnabled());
+      // بارگذاری تنظیمات فیلدها
+      const fields = await StorageService.getVisibleMeasurements(Object.keys(MEASUREMENT_LABELS));
+      setVisibleFields(fields);
       await checkUser();
     };
 
@@ -466,9 +522,7 @@ const App: React.FC = () => {
     const now = Date.now();
     const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 
-    // سناریو ۱: کاربر آنلاین است
     if (isOnline) {
-      // فقط اگر کش وجود ندارد یا بیش از ۲۴ ساعت گذشته است، استعلام از سرور انجام شود
       if (!cached || (now - cached.timestamp > TWENTY_FOUR_HOURS)) {
         try {
           const { data } = await AuthService.getProfile(userId);
@@ -488,16 +542,13 @@ const App: React.FC = () => {
       }
     }
 
-    // سناریو ۲: کاربر آفلاین است یا استعلام آنلاین ناموفق بود یا کش هنوز تازه است
     if (cached) {
       setIsApproved(cached.status);
       if (cached.status) {
         await loadAppData();
-        // در حالت آفلاین بکاپ خودکار انجام نشود
         if (isOnline) handleAutoBackupCheck(userId);
       }
     } else {
-      // اگر هیچ کشی وجود ندارد و اینترنت هم نیست، کاربر باید برای بار اول آنلاین شود
       setIsApproved(false);
     }
   };
@@ -509,7 +560,7 @@ const App: React.FC = () => {
   };
 
   const handleAutoBackupCheck = async (userId: string) => {
-    if (!navigator.onLine) return; // در حالت آفلاین تلاشی برای بکاپ نشود
+    if (!navigator.onLine) return; 
 
     const isEnabled = localStorage.getItem('auto_cloud_backup') === 'true';
     if (!isEnabled) return;
@@ -840,7 +891,7 @@ const App: React.FC = () => {
           const isDebtor = balance > 0;
           
           const activeMeasures = Object.entries(customer.measurements)
-            .filter(([_, val]) => val !== undefined && val !== null && val !== 0);
+            .filter(([key, val]) => (val !== undefined && val !== null && val !== 0) && visibleFields.includes(key));
 
           return (
             <div 
@@ -933,7 +984,7 @@ const App: React.FC = () => {
                 <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-50">
                   <div className="flex justify-between items-center mb-6"><h3 className="font-bold text-slate-800">جزئیات اندازه‌ها</h3><button className="text-indigo-600 text-xs font-bold" onClick={() => setShowCustomerForm(true)}>ویرایش</button></div>
                   <div className="grid grid-cols-2 gap-4">
-                    {Object.entries(selectedCustomer.measurements).map(([key, value]) => value !== undefined && (
+                    {Object.entries(selectedCustomer.measurements).map(([key, value]) => (value !== undefined && visibleFields.includes(key)) && (
                       <div key={key} className="bg-slate-50 p-3 rounded-2xl flex justify-between items-center"><span className="text-[10px] text-slate-400">{MEASUREMENT_LABELS[key]}</span><span className="font-bold text-slate-800">{value}</span></div>
                     ))}
                   </div>
@@ -1128,6 +1179,10 @@ const App: React.FC = () => {
           ))}
         </nav>
         <div className="mt-auto pt-8 border-t border-white/10 flex items-center gap-4 flex-col items-start">
+           <button onClick={() => setShowSettingsModal(true)} className="w-full flex items-center gap-4 px-6 py-4 text-slate-500 hover:text-indigo-400 transition-colors">
+              <Settings size={20}/>
+              <span className="font-bold">تنظیمات اندازه‌ها</span>
+           </button>
            <button onClick={() => setShowBackupModal(true)} className="w-full flex items-center gap-4 px-6 py-4 text-slate-500 hover:text-emerald-400 transition-colors">
               <Database size={20}/>
               <span className="font-bold">مدیریت پشتیبان</span>
@@ -1155,9 +1210,10 @@ const App: React.FC = () => {
               {view === 'CUSTOMER_DETAIL' ? selectedCustomer?.name : (view === 'DASHBOARD' ? 'خیاطیار' : NAVIGATION_ITEMS.find(n => n.id === view)?.label)}
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowBackupModal(true)} className="p-2 text-slate-400 hover:text-emerald-600 transition-colors"><Database size={24} /></button>
-            <button onClick={() => setShowHistorySheet(true)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><History size={24} /></button>
+          <div className="flex items-center gap-1.5">
+            <button onClick={() => setShowSettingsModal(true)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Settings size={22} /></button>
+            <button onClick={() => setShowBackupModal(true)} className="p-2 text-slate-400 hover:text-emerald-600 transition-colors"><Database size={22} /></button>
+            <button onClick={() => setShowHistorySheet(true)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><History size={22} /></button>
           </div>
         </header>
 
@@ -1184,6 +1240,7 @@ const App: React.FC = () => {
             </div>
             {!selectedCustomerId && !selectedAccountingCustomerId && (
               <div className="flex items-center gap-3">
+                <button onClick={() => setShowSettingsModal(true)} className="p-4 bg-white border border-slate-100 rounded-3xl text-slate-500 hover:text-indigo-600 shadow-sm transition-all"><Settings size={24} /></button>
                 <button onClick={() => setShowBackupModal(true)} className="p-4 bg-white border border-slate-100 rounded-3xl text-slate-500 hover:text-emerald-600 shadow-sm transition-all"><Database size={24} /></button>
                 <button onClick={() => setShowHistorySheet(true)} className="p-4 bg-white border border-slate-100 rounded-3xl text-slate-500 hover:text-indigo-600 shadow-sm transition-all"><History size={24} /></button>
               </div>
@@ -1212,13 +1269,15 @@ const App: React.FC = () => {
         </nav>
       </div>
 
-      {showCustomerForm && <CustomerForm onSave={handleAddCustomer} onClose={() => setShowCustomerForm(false)} initialData={selectedCustomer || undefined} />}
+      {showCustomerForm && <CustomerForm onSave={handleAddCustomer} onClose={() => setShowCustomerForm(false)} initialData={selectedCustomer || undefined} visibleFields={visibleFields} />}
       
       {showOrderForm && <OrderForm onSubmit={handleCreateOrder} onClose={() => setShowOrderForm(false)} />}
 
       {showTransactionForm && <TransactionForm type={showTransactionForm} onSubmit={handleAddTransaction} onClose={() => setShowTransactionForm(null)} />}
 
       {showHistorySheet && <HistorySheet orders={orders} transactions={transactions} customers={customers} onClose={() => setShowHistorySheet(false)} />}
+
+      {showSettingsModal && <SettingsModal visibleFields={visibleFields} setVisibleFields={setVisibleFields} onClose={() => setShowSettingsModal(false)} />}
 
       {showBackupModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-end md:items-center justify-center">
