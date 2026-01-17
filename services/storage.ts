@@ -1,16 +1,22 @@
 
 import { Customer, Order, Transaction } from '../types';
 
-const DB_NAME = 'TailorMasterDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'TailorStore';
+const DB_NAME = 'KhayatiyarDB';
+const DB_VERSION = 2; // ارتقا نسخه برای تغییرات جدید
+const STORE_NAME = 'KhayatiyarStore';
 
 const STORAGE_KEYS = {
   CUSTOMERS: 'tailor_customers',
   ORDERS: 'tailor_orders',
   TRANSACTIONS: 'tailor_transactions',
+  APPROVAL_CACHE: 'approval_status_cache',
   MIGRATION_DONE: 'migration_v1_done'
 };
+
+interface ApprovalCache {
+  status: boolean;
+  timestamp: number;
+}
 
 class TailorDB {
   private db: IDBDatabase | null = null;
@@ -64,16 +70,16 @@ const db = new TailorDB();
 
 export const StorageService = {
   init: async () => {
-    // درخواست حافظه دائمی از مرورگر
+    // درخواست جدی برای حافظه دائمی از مرورگر
     if (navigator.storage && navigator.storage.persist) {
       const isPersisted = await navigator.storage.persist();
-      console.log(`Storage Persistence: ${isPersisted ? 'Permanent' : 'Temporary'}`);
+      console.log(`Storage Persistence: ${isPersisted ? 'Permanent (Safe)' : 'Temporary'}`);
     }
 
-    // منطق انتقال داده‌ها از LocalStorage قدیمی به IndexedDB جدید
+    // مهاجرت داده‌ها از حافظه موقت (LocalStorage) به حافظه دائمی (IndexedDB)
     const migrationDone = await db.get<boolean>(STORAGE_KEYS.MIGRATION_DONE);
     if (!migrationDone) {
-      console.log('شروع انتقال داده‌ها به حافظه دائمی...');
+      console.log('در حال انتقال داده‌ها به حافظه دائمی خیاطیار...');
       
       const oldCustomers = localStorage.getItem(STORAGE_KEYS.CUSTOMERS);
       const oldOrders = localStorage.getItem(STORAGE_KEYS.ORDERS);
@@ -84,7 +90,6 @@ export const StorageService = {
       if (oldTxs) await db.set(STORAGE_KEYS.TRANSACTIONS, JSON.parse(oldTxs));
 
       await db.set(STORAGE_KEYS.MIGRATION_DONE, true);
-      console.log('انتقال داده‌ها با موفقیت انجام شد.');
     }
   },
 
@@ -107,6 +112,17 @@ export const StorageService = {
   },
   saveTransactions: async (transactions: Transaction[]) => {
     await db.set(STORAGE_KEYS.TRANSACTIONS, transactions);
+  },
+
+  // متدهای جدید برای مدیریت تاییدیه آفلاین
+  getApprovalCache: async (): Promise<ApprovalCache | null> => {
+    return await db.get<ApprovalCache>(STORAGE_KEYS.APPROVAL_CACHE);
+  },
+  saveApprovalCache: async (status: boolean) => {
+    await db.set(STORAGE_KEYS.APPROVAL_CACHE, {
+      status,
+      timestamp: Date.now()
+    });
   },
 
   isPersistenceEnabled: async (): Promise<boolean> => {
