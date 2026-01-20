@@ -68,8 +68,7 @@ const AuthView = ({
   setPassword, 
   authError, 
   authLoading, 
-  handleAuth,
-  regSuccess 
+  handleAuth
 }: any) => {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -84,92 +83,72 @@ const AuthView = ({
           <p className="text-slate-400 text-sm font-bold">همیار هوشمند خیاطان برتر</p>
         </div>
 
-        {regSuccess ? (
-          <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100 text-center space-y-4">
-            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-              <Mail size={24} />
-            </div>
-            <div className="space-y-2">
-              <h3 className="font-bold text-emerald-800 text-lg">ایمیل خود را تایید کنید</h3>
-              <p className="text-emerald-700 text-sm leading-relaxed">
-                یک لینک فعال‌سازی به ایمیل شما ارسال شد. لطفاً پوشه ورودی (Inbox) یا هرزنامه (Spam) خود را چک کرده و روی لینک کلیک کنید.
-              </p>
-            </div>
+        <>
+          <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-1">
             <button 
-              onClick={() => window.location.reload()}
-              className="w-full py-3 bg-emerald-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-emerald-600/20"
+              onClick={() => setAuthMode('LOGIN')}
+              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${authMode === 'LOGIN' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:bg-white/50'}`}
             >
-              متوجه شدم (بازگشت به ورود)
+              ورود
+            </button>
+            <button 
+              onClick={() => setAuthMode('REGISTER')}
+              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${authMode === 'REGISTER' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:bg-white/50'}`}
+            >
+              ثبت‌نام
             </button>
           </div>
-        ) : (
-          <>
-            <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-1">
-              <button 
-                onClick={() => setAuthMode('LOGIN')}
-                className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${authMode === 'LOGIN' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:bg-white/50'}`}
-              >
-                ورود
-              </button>
-              <button 
-                onClick={() => setAuthMode('REGISTER')}
-                className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${authMode === 'REGISTER' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:bg-white/50'}`}
-              >
-                ثبت‌نام
-              </button>
+
+          <form onSubmit={handleAuth} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 mr-2">ایمیل شما</label>
+              <div className="relative">
+                <Mail className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                <input 
+                  type="email" 
+                  required 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)}
+                  className="w-full pr-12 pl-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                  placeholder="tailor@example.com"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 mr-2">رمز عبور</label>
+              <div className="relative">
+                <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                <input 
+                  type={showPassword ? "text" : "password"}
+                  required 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full pr-12 pl-12 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                  placeholder="••••••••"
+                  dir="ltr"
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleAuth} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 mr-2">ایمیل شما</label>
-                <div className="relative">
-                  <Mail className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                  <input 
-                    type="email" 
-                    required 
-                    value={email} 
-                    onChange={e => setEmail(e.target.value)}
-                    className="w-full pr-12 pl-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                    placeholder="tailor@example.com"
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 mr-2">رمز عبور</label>
-                <div className="relative">
-                  <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                  <input 
-                    type={showPassword ? "text" : "password"}
-                    required 
-                    value={password} 
-                    onChange={e => setPassword(e.target.value)}
-                    className="w-full pr-12 pl-12 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                    placeholder="••••••••"
-                    dir="ltr"
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
+            {authError && <div className="p-4 bg-rose-50 text-rose-600 text-xs font-bold rounded-2xl text-center leading-relaxed">{authError}</div>}
 
-              {authError && <div className="p-4 bg-rose-50 text-rose-600 text-xs font-bold rounded-2xl text-center leading-relaxed">{authError}</div>}
-
-              <button 
-                type="submit" 
-                disabled={authLoading}
-                className="w-full py-4 bg-indigo-600 text-white rounded-[1.5rem] font-bold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
-              >
-                {authLoading ? <Loader2 className="animate-spin" size={20} /> : (authMode === 'LOGIN' ? 'ورود به حساب' : 'ایجاد حساب کاربری')}
-              </button>
-            </form>
-          </>
-        )}
+            <button 
+              type="submit" 
+              disabled={authLoading}
+              className="w-full py-4 bg-indigo-600 text-white rounded-[1.5rem] font-bold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+            >
+              {authLoading ? <Loader2 className="animate-spin" size={20} /> : (authMode === 'LOGIN' ? 'ورود به حساب' : 'ایجاد حساب کاربری')}
+            </button>
+          </form>
+        </>
       </div>
     </div>
   );
@@ -449,7 +428,6 @@ const App: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
-  const [regSuccess, setRegSuccess] = useState(false);
 
   // Data States
   const [view, setView] = useState<AppView>('DASHBOARD');
@@ -596,7 +574,8 @@ const App: React.FC = () => {
       } else {
         const { error } = await AuthService.signUp(email, password);
         if (error) throw error;
-        setRegSuccess(true);
+        // با خاموش بودن تایید ایمیل در سوپربیس، کاربر بلافاصله وارد می‌شود
+        // و شنونده تغییرات نشست او را شناسایی کرده و به ApprovalView هدایت می‌کند.
       }
     } catch (err: any) {
       setAuthError(translateAuthError(err.message || 'خطای ناشناخته'));
@@ -1145,7 +1124,6 @@ const App: React.FC = () => {
         authError={authError}
         authLoading={authLoading}
         handleAuth={handleAuth}
-        regSuccess={regSuccess}
       />
     );
   }
