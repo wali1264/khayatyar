@@ -241,18 +241,13 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onExit }) => {
 
             return (
               <div key={customer.id} className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden transition-all">
-                <div className="p-6 flex justify-between items-center">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 font-black text-xl border border-slate-100">
-                      {customer.name[0]}
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold text-slate-800">{customer.name}</div>
-                      <div className="text-sm text-slate-400 font-bold" dir="ltr">{customer.phone}</div>
-                    </div>
+                <div className="p-6 flex justify-between items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-lg font-bold text-slate-800 break-words leading-tight">{customer.name}</div>
+                    <div className="text-sm text-slate-400 font-bold mt-0.5" dir="ltr">{customer.phone}</div>
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <button 
                       onClick={() => {
                         setQuickOrderPrices({ cloth: 0, sewing: 0, received: 0 });
