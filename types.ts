@@ -30,6 +30,7 @@ export interface Measurements {
 export interface Transaction {
   id: string;
   customerId: string;
+  orderId?: string; // لینک کردن تراکنش به سفارش (مخصوص حالت ساده)
   amount: number; // Positive for debt, negative for payment
   date: string;
   description: string;

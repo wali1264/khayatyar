@@ -6,15 +6,25 @@ export const CloudService = {
   async uploadBackup(userId: string) {
     try {
       const data = {
-        customers: await StorageService.getCustomers(),
-        orders: await StorageService.getOrders(),
-        transactions: await StorageService.getTransactions(),
-        timestamp: new Date().toISOString()
+        // داده‌های بخش حرفه‌ای
+        professional: {
+          customers: await StorageService.getCustomers(),
+          orders: await StorageService.getOrders(),
+          transactions: await StorageService.getTransactions(),
+        },
+        // داده‌های بخش ساده
+        simple: {
+          customers: await StorageService.getSimpleCustomers(),
+          orders: await StorageService.getSimpleOrders(),
+          transactions: await StorageService.getSimpleTransactions(),
+        },
+        timestamp: new Date().toISOString(),
+        version: '2.0' // ورژن جدید ساختار پشتیبان‌گیری
       };
 
-      // اعتبارسنجی اولیه برای اطمینان از صحت داده‌ها
-      if (!data.customers || !Array.isArray(data.customers)) {
-        throw new Error('ساختار داده‌های مشتریان نامعتبر است.');
+      // اعتبارسنجی اولیه
+      if (!data.professional.customers || !Array.isArray(data.professional.customers)) {
+        throw new Error('ساختار داده‌های مشتریان حرفه‌ای نامعتبر است.');
       }
 
       const { error } = await supabase
@@ -46,10 +56,23 @@ export const CloudService = {
 
       const backup = data.data;
       
-      // جایگزینی در حافظه دائمی
-      await StorageService.saveCustomers(backup.customers || []);
-      await StorageService.saveOrders(backup.orders || []);
-      await StorageService.saveTransactions(backup.transactions || []);
+      // بازیابی هوشمند با بررسی ورژن یا ساختار
+      if (backup.version === '2.0' && backup.professional && backup.simple) {
+        // بازیابی داده‌های حرفه‌ای
+        await StorageService.saveCustomers(backup.professional.customers || []);
+        await StorageService.saveOrders(backup.professional.orders || []);
+        await StorageService.saveTransactions(backup.professional.transactions || []);
+        
+        // بازیابی داده‌های ساده
+        await StorageService.saveSimpleCustomers(backup.simple.customers || []);
+        await StorageService.saveSimpleOrders(backup.simple.orders || []);
+        await StorageService.saveSimpleTransactions(backup.simple.transactions || []);
+      } else {
+        // پشتیبانی از نسخه‌های قدیمی (Backward Compatibility)
+        await StorageService.saveCustomers(backup.customers || []);
+        await StorageService.saveOrders(backup.orders || []);
+        await StorageService.saveTransactions(backup.transactions || []);
+      }
       
       return { success: true };
     } catch (error) {

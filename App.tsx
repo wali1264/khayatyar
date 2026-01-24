@@ -50,9 +50,11 @@ import {
   FileText,
   AlertCircle,
   Settings,
-  Check
+  Check,
+  Zap
 } from 'lucide-react';
 import CustomerForm from './components/CustomerForm';
+import SimpleModeView from './components/SimpleModeView';
 
 type MobileCustomerTab = 'INFO' | 'MEASUREMENTS' | 'ORDERS';
 type DashboardFilter = 'ALL' | OrderStatus;
@@ -299,7 +301,7 @@ const TransactionForm = ({ type, onSubmit, onClose }: any) => {
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 mr-2 uppercase">بابتِ (توضیحات)</label>
+            <label className="text-[10px] font-bold text-slate-400 mr-2 uppercase">بابتِ (توضیجات)</label>
             <input 
               type="text" required value={description} onChange={e => setDescription(e.target.value)}
               className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-bold"
@@ -420,6 +422,9 @@ const SettingsModal = ({ visibleFields, setVisibleFields, onClose }: any) => {
 // --- End of externalized components ---
 
 const App: React.FC = () => {
+  // Global App State
+  const [isSimpleMode, setIsSimpleMode] = useState<boolean>(localStorage.getItem('is_simple_mode') === 'true');
+
   // Auth States
   const [user, setUser] = useState<any>(null);
   const [isApproved, setIsApproved] = useState<boolean>(false);
@@ -574,8 +579,6 @@ const App: React.FC = () => {
       } else {
         const { error } = await AuthService.signUp(email, password);
         if (error) throw error;
-        // با خاموش بودن تایید ایمیل در سوپربیس، کاربر بلافاصله وارد می‌شود
-        // و شنونده تغییرات نشست او را شناسایی کرده و به ApprovalView هدایت می‌کند.
       }
     } catch (err: any) {
       setAuthError(translateAuthError(err.message || 'خطای ناشناخته'));
@@ -706,13 +709,22 @@ const App: React.FC = () => {
     await StorageService.saveOrders(updated);
   };
 
-  const handleExportData = () => {
-    const data = { customers, orders, transactions, exportedAt: new Date().toISOString() };
+  const handleExportData = async () => {
+    const data = { 
+      professional: { customers, orders, transactions },
+      simple: {
+        customers: await StorageService.getSimpleCustomers(),
+        orders: await StorageService.getSimpleOrders(),
+        transactions: await StorageService.getSimpleTransactions(),
+      },
+      exportedAt: new Date().toISOString(),
+      version: '2.0'
+    };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `khayatiyar_backup_${new Date().toLocaleDateString('fa-IR').replace(/\//g, '-')}.json`;
+    a.download = `khayatiyar_all_backup_${new Date().toLocaleDateString('fa-IR').replace(/\//g, '-')}.json`;
     a.click();
     setShowBackupModal(false);
   };
@@ -721,13 +733,26 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!confirm('آیا مطمئن هستید؟ تمام اطلاعات فعلی با اطلاعات این فایل جایگزین خواهد شد.')) return;
+    if (!confirm('آیا مطمئن هستید؟ تمام اطلاعات فعلی (هر دو بخش ساده و حرفه‌ای) با اطلاعات این فایل جایگزین خواهد شد.')) return;
 
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
         const data = JSON.parse(event.target?.result as string);
-        if (data.customers && data.orders && data.transactions) {
+        
+        if (data.version === '2.0' && data.professional && data.simple) {
+          // بازیابی نسخه جدید
+          await StorageService.saveCustomers(data.professional.customers || []);
+          await StorageService.saveOrders(data.professional.orders || []);
+          await StorageService.saveTransactions(data.professional.transactions || []);
+          
+          await StorageService.saveSimpleCustomers(data.simple.customers || []);
+          await StorageService.saveSimpleOrders(data.simple.orders || []);
+          await StorageService.saveSimpleTransactions(data.simple.transactions || []);
+          
+          window.location.reload();
+        } else if (data.customers && data.orders && data.transactions) {
+          // سازگاری با فایل‌های قدیمی
           await StorageService.saveCustomers(data.customers);
           await StorageService.saveOrders(data.orders);
           await StorageService.saveTransactions(data.transactions);
@@ -740,6 +765,15 @@ const App: React.FC = () => {
       }
     };
     reader.readAsText(file);
+  };
+
+  const toggleSimpleMode = (active: boolean) => {
+    setIsSimpleMode(active);
+    localStorage.setItem('is_simple_mode', active.toString());
+    // در هنگام تغییر حالت، تمام وضعیت‌های فعلی را ریست می‌کنیم تا ایزولاسیون بصری حفظ شود
+    setView('DASHBOARD');
+    setSelectedCustomerId(null);
+    setSelectedAccountingCustomerId(null);
   };
 
   const renderDashboard = () => {
@@ -1132,6 +1166,11 @@ const App: React.FC = () => {
     return <ApprovalView user={user} checkApproval={checkApproval} signOut={() => AuthService.signOut()} />;
   }
 
+  // اگر حالت ساده فعال باشد، نمای ایزوله را نشان می‌دهیم
+  if (isSimpleMode) {
+    return <SimpleModeView onExit={() => toggleSimpleMode(false)} />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#f8fafc]">
       <aside className="hidden md:flex w-80 bg-slate-950 text-white flex-col p-8 sticky top-0 h-screen border-l border-white/5">
@@ -1155,6 +1194,14 @@ const App: React.FC = () => {
               <div className="transition-colors">{item.icon}</div><span className="font-bold tracking-tight">{item.label}</span>
             </button>
           ))}
+          {/* دکمه سوئیچ به حالت ساده در سایدبار دسکتاپ */}
+          <button 
+            onClick={() => toggleSimpleMode(true)}
+            className="w-full flex items-center gap-4 px-6 py-4 rounded-[1.5rem] text-indigo-400 hover:bg-indigo-500/10 transition-all mt-4 border border-indigo-500/20"
+          >
+            <Zap size={20} />
+            <span className="font-bold tracking-tight">ورود به حالت ساده</span>
+          </button>
         </nav>
         <div className="mt-auto pt-8 border-t border-white/10 flex items-center gap-4 flex-col items-start">
            <button onClick={() => setShowSettingsModal(true)} className="w-full flex items-center gap-4 px-6 py-4 text-slate-500 hover:text-indigo-400 transition-colors">
@@ -1189,6 +1236,8 @@ const App: React.FC = () => {
             </h1>
           </div>
           <div className="flex items-center gap-1.5">
+            {/* دکمه سوئیچ به حالت ساده در هدر موبایل */}
+            <button onClick={() => toggleSimpleMode(true)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"><Zap size={22} /></button>
             <button onClick={() => setShowSettingsModal(true)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Settings size={22} /></button>
             <button onClick={() => setShowBackupModal(true)} className="p-2 text-slate-400 hover:text-emerald-600 transition-colors"><Database size={22} /></button>
             <button onClick={() => setShowHistorySheet(true)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><History size={22} /></button>
@@ -1218,6 +1267,7 @@ const App: React.FC = () => {
             </div>
             {!selectedCustomerId && !selectedAccountingCustomerId && (
               <div className="flex items-center gap-3">
+                <button onClick={() => toggleSimpleMode(true)} className="px-6 py-4 bg-indigo-50 border border-indigo-100 rounded-3xl text-indigo-600 font-bold hover:bg-indigo-100 shadow-sm transition-all flex items-center gap-2"><Zap size={20} /> حالت ساده</button>
                 <button onClick={() => setShowSettingsModal(true)} className="p-4 bg-white border border-slate-100 rounded-3xl text-slate-500 hover:text-indigo-600 shadow-sm transition-all"><Settings size={24} /></button>
                 <button onClick={() => setShowBackupModal(true)} className="p-4 bg-white border border-slate-100 rounded-3xl text-slate-500 hover:text-emerald-600 shadow-sm transition-all"><Database size={24} /></button>
                 <button onClick={() => setShowHistorySheet(true)} className="p-4 bg-white border border-slate-100 rounded-3xl text-slate-500 hover:text-indigo-600 shadow-sm transition-all"><History size={24} /></button>

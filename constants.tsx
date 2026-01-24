@@ -27,6 +27,17 @@ export const MEASUREMENT_LABELS: Record<string, string> = {
   ankle: 'دور دمپا',
 };
 
+// فیلدهای طلایی برای حالت ساده (خیاطی سنتی/افغانی)
+export const SIMPLE_MEASUREMENT_LABELS: Record<string, string> = {
+  height: 'قد',
+  sleeveLength: 'آستین',
+  shoulder: 'شانه',
+  neck: 'یخن',
+  waist: 'کمر',
+  outseam: 'قد شلوار',
+  ankle: 'پاچه',
+};
+
 export const NAVIGATION_ITEMS = [
   { id: 'DASHBOARD', label: 'داشبورد', icon: <LayoutDashboard size={20} /> },
   { id: 'CUSTOMERS', label: 'مشتریان', icon: <Users size={20} /> },

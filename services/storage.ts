@@ -9,6 +9,11 @@ const STORAGE_KEYS = {
   CUSTOMERS: 'tailor_customers',
   ORDERS: 'tailor_orders',
   TRANSACTIONS: 'tailor_transactions',
+  // کلیدهای بخش ساده (ایزوله)
+  SIMPLE_CUSTOMERS: 'simple_customers',
+  SIMPLE_ORDERS: 'simple_orders',
+  SIMPLE_TRANSACTIONS: 'simple_transactions',
+  
   APPROVAL_CACHE: 'approval_status_cache',
   MIGRATION_DONE: 'migration_v1_done',
   VISIBLE_MEASUREMENTS: 'visible_measurements_config'
@@ -89,25 +94,44 @@ export const StorageService = {
     }
   },
 
+  // متدهای بخش حرفه‌ای
   getCustomers: async (): Promise<Customer[]> => {
     return (await db.get<Customer[]>(STORAGE_KEYS.CUSTOMERS)) || [];
   },
   saveCustomers: async (customers: Customer[]) => {
     await db.set(STORAGE_KEYS.CUSTOMERS, customers);
   },
-  
   getOrders: async (): Promise<Order[]> => {
     return (await db.get<Order[]>(STORAGE_KEYS.ORDERS)) || [];
   },
   saveOrders: async (orders: Order[]) => {
     await db.set(STORAGE_KEYS.ORDERS, orders);
   },
-  
   getTransactions: async (): Promise<Transaction[]> => {
     return (await db.get<Transaction[]>(STORAGE_KEYS.TRANSACTIONS)) || [];
   },
   saveTransactions: async (transactions: Transaction[]) => {
     await db.set(STORAGE_KEYS.TRANSACTIONS, transactions);
+  },
+
+  // متدهای بخش ساده (ایزوله)
+  getSimpleCustomers: async (): Promise<Customer[]> => {
+    return (await db.get<Customer[]>(STORAGE_KEYS.SIMPLE_CUSTOMERS)) || [];
+  },
+  saveSimpleCustomers: async (customers: Customer[]) => {
+    await db.set(STORAGE_KEYS.SIMPLE_CUSTOMERS, customers);
+  },
+  getSimpleOrders: async (): Promise<Order[]> => {
+    return (await db.get<Order[]>(STORAGE_KEYS.SIMPLE_ORDERS)) || [];
+  },
+  saveSimpleOrders: async (orders: Order[]) => {
+    await db.set(STORAGE_KEYS.SIMPLE_ORDERS, orders);
+  },
+  getSimpleTransactions: async (): Promise<Transaction[]> => {
+    return (await db.get<Transaction[]>(STORAGE_KEYS.SIMPLE_TRANSACTIONS)) || [];
+  },
+  saveSimpleTransactions: async (transactions: Transaction[]) => {
+    await db.set(STORAGE_KEYS.SIMPLE_TRANSACTIONS, transactions);
   },
 
   getApprovalCache: async (): Promise<ApprovalCache | null> => {
@@ -120,7 +144,6 @@ export const StorageService = {
     });
   },
 
-  // تنظیمات فیلدهای اندازه‌گیری
   getVisibleMeasurements: async (allKeys: string[]): Promise<string[]> => {
     const saved = await db.get<string[]>(STORAGE_KEYS.VISIBLE_MEASUREMENTS);
     return saved || allKeys;
