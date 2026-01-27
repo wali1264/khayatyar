@@ -1,7 +1,8 @@
 
 export enum OrderStatus {
-  PENDING = 'در انتظار',
+  PENDING = 'در انتظار دوخت',
   PROCESSING = 'در حال دوخت',
+  SEWN = 'دوخته شده',
   READY = 'آماده تحویل',
   COMPLETED = 'تحویل داده شده'
 }
@@ -44,8 +45,19 @@ export interface Order {
   dateCreated: string;
   dueDate?: string;
   totalPrice?: number;
+  clothPrice?: number; // قیمت پارچه
+  sewingFee?: number; // اجرت دوخت
   deposit?: number;
   photo?: string; // base64
+  styleDetails?: Record<string, string>; // جزئیات مدل (یقه، آستین و غیره)
+}
+
+export interface ShopInfo {
+  name: string;
+  phone: string;
+  address: string;
+  tailorName: string;
+  extraNotes?: string;
 }
 
 export interface Customer {

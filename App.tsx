@@ -51,15 +51,15 @@ import {
   AlertCircle,
   Settings,
   Check,
-  Zap
+  Zap,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import CustomerForm from './components/CustomerForm';
 import SimpleModeView from './components/SimpleModeView';
 
 type MobileCustomerTab = 'INFO' | 'MEASUREMENTS' | 'ORDERS';
 type DashboardFilter = 'ALL' | OrderStatus;
-
-// --- Sub-components moved outside to prevent re-mounting/focus loss ---
 
 const AuthView = ({ 
   authMode, 
@@ -192,15 +192,20 @@ const ApprovalView = ({ user, checkApproval, signOut }: any) => (
 
 const OrderForm = ({ onSubmit, onClose }: any) => {
   const [description, setDescription] = useState('');
-  const [totalPrice, setTotalPrice] = useState('');
+  const [clothPrice, setClothPrice] = useState('');
+  const [sewingFee, setSewingFee] = useState('');
   const [deposit, setDeposit] = useState('');
   const [dueDate, setDueDate] = useState('');
+
+  const totalPrice = (Number(clothPrice) || 0) + (Number(sewingFee) || 0);
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
       description,
-      totalPrice: Number(totalPrice) || 0,
+      totalPrice,
+      clothPrice: Number(clothPrice) || 0,
+      sewingFee: Number(sewingFee) || 0,
       deposit: Number(deposit) || 0,
       dueDate
     });
@@ -229,16 +234,35 @@ const OrderForm = ({ onSubmit, onClose }: any) => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 mr-2 uppercase">قیمت کل (افغانی)</label>
+              <label className="text-[10px] font-bold text-slate-400 mr-2 uppercase">قیمت پارچه (افغانی)</label>
               <div className="relative">
                 <DollarSign className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                 <input 
-                  type="number" required value={totalPrice} onChange={e => setTotalPrice(e.target.value)}
+                  type="number" value={clothPrice} onChange={e => setClothPrice(e.target.value)}
                   className="w-full pr-12 pl-4 py-3.5 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-bold"
                   placeholder="0" dir="ltr"
                 />
               </div>
             </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 mr-2 uppercase">اجرت دوخت (افغانی)</label>
+              <div className="relative">
+                <Scissors className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                <input 
+                  type="number" value={sewingFee} onChange={e => setSewingFee(e.target.value)}
+                  className="w-full pr-12 pl-4 py-3.5 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-bold"
+                  placeholder="0" dir="ltr"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-slate-900 p-5 rounded-3xl text-center shadow-lg">
+             <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">جمع کل قابل پرداخت</div>
+             <div className="text-2xl font-black text-white">{totalPrice.toLocaleString()} افغانی</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 mr-2 uppercase">بیعانه دریافتی</label>
               <div className="relative">
@@ -250,16 +274,16 @@ const OrderForm = ({ onSubmit, onClose }: any) => {
                 />
               </div>
             </div>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 mr-2 uppercase">تاریخ تحویل</label>
-            <div className="relative">
-              <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-              <input 
-                type="text" value={dueDate} onChange={e => setDueDate(e.target.value)}
-                className="w-full pr-12 pl-4 py-3.5 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-bold"
-                placeholder="مثلاً: ۱۴۰۳/۰۴/۱۵"
-              />
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 mr-2 uppercase">تاریخ تحویل</label>
+              <div className="relative">
+                <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                <input 
+                  type="text" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                  className="w-full pr-12 pl-4 py-3.5 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-bold"
+                  placeholder="۱۴۰۳/۰۴/۱۵"
+                />
+              </div>
             </div>
           </div>
           <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all">ثبت نهایی سفارش</button>
@@ -322,7 +346,6 @@ const HistorySheet = ({ orders, transactions, customers, onClose }: any) => {
     const orderEvents = orders.map((o: Order) => ({ ...o, type: 'ORDER' }));
     const txEvents = transactions.map((t: Transaction) => ({ ...t, type: 'TX' }));
     return [...orderEvents, ...txEvents].sort((a, b) => {
-      // Very naive date comparison for IR dates, but works for most cases
       return b.id.localeCompare(a.id);
     }).slice(0, 30);
   }, [orders, transactions]);
@@ -419,13 +442,9 @@ const SettingsModal = ({ visibleFields, setVisibleFields, onClose }: any) => {
   );
 };
 
-// --- End of externalized components ---
-
 const App: React.FC = () => {
-  // Global App State
   const [isSimpleMode, setIsSimpleMode] = useState<boolean>(localStorage.getItem('is_simple_mode') === 'true');
 
-  // Auth States
   const [user, setUser] = useState<any>(null);
   const [isApproved, setIsApproved] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState(true);
@@ -434,7 +453,6 @@ const App: React.FC = () => {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
 
-  // Data States
   const [view, setView] = useState<AppView>('DASHBOARD');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -444,7 +462,6 @@ const App: React.FC = () => {
   const [accountingSearchTerm, setAccountingSearchTerm] = useState('');
   const [dashboardFilter, setDashboardFilter] = useState<DashboardFilter>('ALL');
   
-  // Modal States
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [showTransactionForm, setShowTransactionForm] = useState(null as 'DEBT' | 'PAYMENT' | null);
@@ -461,12 +478,10 @@ const App: React.FC = () => {
 
   const [autoBackupEnabled, setAutoBackupEnabled] = useState(localStorage.getItem('auto_cloud_backup') === 'true');
 
-  // Initialize Auth & Data
   useEffect(() => {
     const initApp = async () => {
       await StorageService.init();
       setIsStoragePersistent(await StorageService.isPersistenceEnabled());
-      // بارگذاری تنظیمات فیلدها
       const fields = await StorageService.getVisibleMeasurements(Object.keys(MEASUREMENT_LABELS));
       setVisibleFields(fields);
       await checkUser();
@@ -520,7 +535,7 @@ const App: React.FC = () => {
             return;
           }
         } catch (err) {
-          console.warn("استعلام آنلاین تاییدیه با خطا مواجه شد، استفاده از کش محلی...");
+          console.warn("Online approval check failed...");
         }
       }
     }
@@ -544,14 +559,11 @@ const App: React.FC = () => {
 
   const handleAutoBackupCheck = async (userId: string) => {
     if (!navigator.onLine) return; 
-
     const isEnabled = localStorage.getItem('auto_cloud_backup') === 'true';
     if (!isEnabled) return;
-
     const lastBackup = Number(localStorage.getItem('last_auto_backup_ts') || 0);
     const now = Date.now();
     const twentyFourHours = 24 * 60 * 60 * 1000;
-
     if (now - lastBackup > twentyFourHours) {
       const res = await CloudService.uploadBackup(userId);
       if (res.success) {
@@ -605,12 +617,10 @@ const App: React.FC = () => {
   const handleCloudRestore = async () => {
     if (!user) return;
     if (!confirm('آیا مطمئن هستید؟ تمام اطلاعات فعلی با اطلاعات ابری جایگزین خواهد شد.')) return;
-    
     setCloudStatus({ message: 'در حال بازیابی داده‌ها از فضای ابری...', type: 'info' });
     setCloudActionLoading(true);
     const res = await CloudService.downloadBackup(user.id);
     setCloudActionLoading(false);
-    
     if (res.success) {
       setCloudStatus({ message: 'بازیابی موفقیت‌آمیز بود. در حال بازنشانی برنامه...', type: 'success' });
       setTimeout(() => window.location.reload(), 2000);
@@ -642,17 +652,37 @@ const App: React.FC = () => {
   }, [customers, selectedAccountingCustomerId]);
 
   const handleAddCustomer = async (data: Partial<Customer>) => {
-    const newCustomer: Customer = {
-      id: Date.now().toString(),
-      name: data.name!,
-      phone: data.phone!,
-      measurements: data.measurements || {},
-      balance: 0,
-    };
-    const updated = [...customers, newCustomer];
+    let updated;
+    if (selectedCustomerId) {
+       updated = customers.map(c => c.id === selectedCustomerId ? { ...c, ...data } : c);
+    } else {
+      const newCustomer: Customer = {
+        id: Date.now().toString(),
+        name: data.name!,
+        phone: data.phone!,
+        measurements: data.measurements || {},
+        balance: 0,
+      };
+      updated = [...customers, newCustomer];
+    }
     setCustomers(updated);
     await StorageService.saveCustomers(updated);
     setShowCustomerForm(false);
+    setSelectedCustomerId(null);
+  };
+
+  const handleDeleteCustomer = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const cust = customers.find(c => c.id === id);
+    const custOrders = orders.filter(o => o.customerId === id);
+    if (custOrders.length > 0 || (cust && Math.abs(cust.balance) > 0.1)) {
+       alert('حذف مشتری با سوابق یا تراز مالی غیر صفر ممکن نیست.');
+       return;
+    }
+    if (!confirm('آیا از حذف این مشتری مطمئن هستید؟')) return;
+    const updated = customers.filter(c => c.id !== id);
+    setCustomers(updated);
+    await StorageService.saveCustomers(updated);
   };
 
   const handleAddTransaction = async (amount: number, description: string, custId: string = selectedAccountingCustomerId || selectedCustomerId!) => {
@@ -675,7 +705,7 @@ const App: React.FC = () => {
     setShowTransactionForm(null);
   };
 
-  const handleCreateOrder = async (orderData: { description: string, totalPrice: number, deposit: number, dueDate: string }) => {
+  const handleCreateOrder = async (orderData: { description: string, totalPrice: number, clothPrice: number, sewingFee: number, deposit: number, dueDate: string }) => {
     if (!selectedCustomerId) return;
 
     const newOrder: Order = {
@@ -685,6 +715,8 @@ const App: React.FC = () => {
       status: OrderStatus.PENDING,
       dateCreated: new Date().toLocaleDateString('fa-IR'),
       totalPrice: orderData.totalPrice,
+      clothPrice: orderData.clothPrice,
+      sewingFee: orderData.sewingFee,
       deposit: orderData.deposit,
       dueDate: orderData.dueDate || undefined
     };
@@ -694,10 +726,10 @@ const App: React.FC = () => {
     await StorageService.saveOrders(updatedOrders);
 
     if (orderData.totalPrice > 0) {
-      await handleAddTransaction(orderData.totalPrice, `هزینه سفارش: ${orderData.description}`, selectedCustomerId);
+      await handleAddTransaction(orderData.totalPrice, `سفارش: ${orderData.description}`, selectedCustomerId);
     }
     if (orderData.deposit > 0) {
-      await handleAddTransaction(-orderData.deposit, `بیعانه سفارش: ${orderData.description}`, selectedCustomerId);
+      await handleAddTransaction(-orderData.deposit, `بیعانه: ${orderData.description}`, selectedCustomerId);
     }
     
     setShowOrderForm(false);
@@ -732,33 +764,21 @@ const App: React.FC = () => {
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!confirm('آیا مطمئن هستید؟ تمام اطلاعات فعلی (هر دو بخش ساده و حرفه‌ای) با اطلاعات این فایل جایگزین خواهد شد.')) return;
-
+    if (!confirm('اطلاعات فعلی جایگزین خواهد شد. ادامه می‌دهید؟')) return;
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
         const data = JSON.parse(event.target?.result as string);
-        
         if (data.version === '2.0' && data.professional && data.simple) {
-          // بازیابی نسخه جدید
           await StorageService.saveCustomers(data.professional.customers || []);
           await StorageService.saveOrders(data.professional.orders || []);
           await StorageService.saveTransactions(data.professional.transactions || []);
-          
           await StorageService.saveSimpleCustomers(data.simple.customers || []);
           await StorageService.saveSimpleOrders(data.simple.orders || []);
           await StorageService.saveSimpleTransactions(data.simple.transactions || []);
-          
-          window.location.reload();
-        } else if (data.customers && data.orders && data.transactions) {
-          // سازگاری با فایل‌های قدیمی
-          await StorageService.saveCustomers(data.customers);
-          await StorageService.saveOrders(data.orders);
-          await StorageService.saveTransactions(data.transactions);
           window.location.reload();
         } else {
-          alert('فایل انتخاب شده معتبر نیست.');
+          alert('فرمت فایل نامعتبر است.');
         }
       } catch (err) {
         alert('خطا در خواندن فایل.');
@@ -770,7 +790,6 @@ const App: React.FC = () => {
   const toggleSimpleMode = (active: boolean) => {
     setIsSimpleMode(active);
     localStorage.setItem('is_simple_mode', active.toString());
-    // در هنگام تغییر حالت، تمام وضعیت‌های فعلی را ریست می‌کنیم تا ایزولاسیون بصری حفظ شود
     setView('DASHBOARD');
     setSelectedCustomerId(null);
     setSelectedAccountingCustomerId(null);
@@ -902,6 +921,8 @@ const App: React.FC = () => {
         {filteredCustomers.map(customer => {
           const balance = customer.balance;
           const isDebtor = balance > 0;
+          const custOrders = orders.filter(o => o.customerId === customer.id);
+          const canDelete = custOrders.length === 0 && Math.abs(balance) < 0.1;
           
           const activeMeasures = Object.entries(customer.measurements)
             .filter(([key, val]) => (val !== undefined && val !== null && val !== 0) && visibleFields.includes(key));
@@ -910,48 +931,75 @@ const App: React.FC = () => {
             <div 
               key={customer.id} 
               onClick={() => { setSelectedCustomerId(customer.id); setView('CUSTOMER_DETAIL'); setActiveCustomerTab('INFO'); }} 
-              className="bg-white px-4 py-3 rounded-2xl border border-slate-50 shadow-sm hover:shadow-md cursor-pointer transition-all flex flex-col gap-2 group relative overflow-hidden active:bg-slate-50"
+              className="bg-white px-5 py-4 rounded-[2rem] border border-slate-50 shadow-sm hover:shadow-md cursor-pointer transition-all flex flex-col gap-3 group relative overflow-hidden active:bg-slate-50"
             >
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <h4 className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 transition-colors truncate max-w-[120px]">
+                  <h4 className="text-base font-bold text-slate-800 group-hover:text-indigo-600 transition-colors truncate max-w-[150px]">
                     {customer.name}
                   </h4>
-                  <span className="text-[10px] text-slate-400 font-medium" dir="ltr">{customer.phone}</span>
+                  <span className="text-xs text-slate-400 font-bold" dir="ltr">{customer.phone}</span>
                 </div>
                 
+                <div className="flex items-center gap-2">
+                   <button 
+                    onClick={(e) => { e.stopPropagation(); setSelectedCustomerId(customer.id); setShowOrderForm(true); }}
+                    className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 active:scale-90 transition-all"
+                    title="ثبت سفارش"
+                   >
+                     <Plus size={18} />
+                   </button>
+                   <button 
+                    onClick={(e) => { e.stopPropagation(); setSelectedCustomerId(customer.id); setShowCustomerForm(true); }}
+                    className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 active:scale-90 transition-all"
+                    title="ویرایش"
+                   >
+                     <Edit3 size={18} />
+                   </button>
+                   <button 
+                    disabled={!canDelete}
+                    onClick={(e) => handleDeleteCustomer(customer.id, e)}
+                    className={`p-2.5 rounded-xl transition-all ${canDelete ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 active:scale-90' : 'bg-slate-50 text-slate-200 cursor-not-allowed'}`}
+                    title="حذف"
+                   >
+                     <Trash2 size={18} />
+                   </button>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5">
+                  {activeMeasures.slice(0, 6).map(([key, value]) => (
+                    <div 
+                      key={key} 
+                      className="bg-slate-50/80 px-2 py-1.5 rounded-lg border border-slate-100 flex flex-col items-center justify-center min-w-[45px]"
+                    >
+                      <span className="text-[8px] text-slate-400 font-black leading-none mb-1 truncate w-full text-center">
+                        {MEASUREMENT_LABELS[key] || key}
+                      </span>
+                      <span className="text-[11px] font-black text-slate-800 leading-none">
+                        {value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
                 {balance !== 0 && (
-                  <div className={`px-2 py-0.5 rounded-lg text-[9px] font-bold border transition-all ${
+                  <div className={`px-3 py-1 rounded-xl text-[10px] font-black border transition-all ${
                     isDebtor 
-                      ? 'bg-rose-50/50 text-rose-600 border-rose-200/50 shadow-[0_0_8px_rgba(225,29,72,0.15)]' 
-                      : 'bg-emerald-50/50 text-emerald-600 border-emerald-200/50 shadow-[0_0_8px_rgba(5,150,105,0.15)]'
+                      ? 'bg-rose-50 text-rose-600 border-rose-100' 
+                      : 'bg-emerald-50 text-emerald-600 border-emerald-100'
                   }`}>
                     {Math.abs(balance).toLocaleString()} افغانی {isDebtor ? 'بدهکار' : 'طلبکار'}
                   </div>
                 )}
-              </div>
-
-              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5 pt-1">
-                {activeMeasures.map(([key, value]) => (
-                  <div 
-                    key={key} 
-                    className="bg-slate-50/80 px-1.5 py-1 rounded-md border border-slate-100 flex flex-col items-center justify-center min-w-[40px]"
-                  >
-                    <span className="text-[8px] text-slate-400 font-bold leading-none mb-1 truncate w-full text-center">
-                      {MEASUREMENT_LABELS[key] || key}
-                    </span>
-                    <span className="text-[11px] font-bold text-slate-700 leading-none drop-shadow-[0_0_1px_rgba(79,70,229,0.3)]">
-                      {value}
-                    </span>
-                  </div>
-                ))}
               </div>
             </div>
           );
         })}
       </div>
       <button 
-        onClick={() => setShowCustomerForm(true)} 
+        onClick={() => { setSelectedCustomerId(null); setShowCustomerForm(true); }} 
         className="fixed bottom-24 right-6 w-14 h-14 bg-indigo-600 text-white rounded-2xl shadow-2xl flex items-center justify-center z-[80] active:scale-95 transition-all shadow-indigo-600/40"
       >
         <Plus size={28} />
@@ -1022,6 +1070,12 @@ const App: React.FC = () => {
                           {Object.values(OrderStatus).map(status => <option key={status} value={status}>{status}</option>)}
                         </select>
                       </div>
+                      {(order.clothPrice || order.sewingFee) && (
+                        <div className="mt-4 pt-4 border-t border-white grid grid-cols-2 gap-4 text-[11px] font-bold text-slate-600">
+                          <div>قیمت پارچه: {order.clothPrice?.toLocaleString()}</div>
+                          <div>اجرت دوخت: {order.sewingFee?.toLocaleString()}</div>
+                        </div>
+                      )}
                     </div>
                   )) : <div className="text-center text-slate-300 py-10">سفارشی یافت نشد.</div>}
                 </div>
@@ -1166,7 +1220,6 @@ const App: React.FC = () => {
     return <ApprovalView user={user} checkApproval={checkApproval} signOut={() => AuthService.signOut()} />;
   }
 
-  // اگر حالت ساده فعال باشد، نمای ایزوله را نشان می‌دهیم
   if (isSimpleMode) {
     return <SimpleModeView onExit={() => toggleSimpleMode(false)} />;
   }
@@ -1194,7 +1247,6 @@ const App: React.FC = () => {
               <div className="transition-colors">{item.icon}</div><span className="font-bold tracking-tight">{item.label}</span>
             </button>
           ))}
-          {/* دکمه سوئیچ به حالت ساده در سایدبار دسکتاپ */}
           <button 
             onClick={() => toggleSimpleMode(true)}
             className="w-full flex items-center gap-4 px-6 py-4 rounded-[1.5rem] text-indigo-400 hover:bg-indigo-500/10 transition-all mt-4 border border-indigo-500/20"
@@ -1236,7 +1288,6 @@ const App: React.FC = () => {
             </h1>
           </div>
           <div className="flex items-center gap-1.5">
-            {/* دکمه سوئیچ به حالت ساده در هدر موبایل */}
             <button onClick={() => toggleSimpleMode(true)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"><Zap size={22} /></button>
             <button onClick={() => setShowSettingsModal(true)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Settings size={22} /></button>
             <button onClick={() => setShowBackupModal(true)} className="p-2 text-slate-400 hover:text-emerald-600 transition-colors"><Database size={22} /></button>
@@ -1297,9 +1348,9 @@ const App: React.FC = () => {
         </nav>
       </div>
 
-      {showCustomerForm && <CustomerForm onSave={handleAddCustomer} onClose={() => setShowCustomerForm(false)} initialData={selectedCustomer || undefined} visibleFields={visibleFields} />}
+      {showCustomerForm && <CustomerForm onSave={handleAddCustomer} onClose={() => { setShowCustomerForm(false); setSelectedCustomerId(null); }} initialData={selectedCustomer || undefined} visibleFields={visibleFields} />}
       
-      {showOrderForm && <OrderForm onSubmit={handleCreateOrder} onClose={() => setShowOrderForm(false)} />}
+      {showOrderForm && <OrderForm onSubmit={handleCreateOrder} onClose={() => { setShowOrderForm(false); setSelectedCustomerId(null); }} />}
 
       {showTransactionForm && <TransactionForm type={showTransactionForm} onSubmit={handleAddTransaction} onClose={() => setShowTransactionForm(null)} />}
 
@@ -1317,7 +1368,6 @@ const App: React.FC = () => {
             </div>
             
             <div className="space-y-6">
-              {/* Storage Security Indicator */}
               <div className={`p-4 rounded-2xl flex items-center gap-3 border transition-all ${isStoragePersistent ? 'bg-indigo-50 border-indigo-100 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isStoragePersistent ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-200 text-slate-400'}`}>
                   {isStoragePersistent ? <ShieldCheck size={22} /> : <Database size={22} />}
@@ -1358,7 +1408,6 @@ const App: React.FC = () => {
                   </button>
                 </div>
                 
-                {/* Cloud Status Message Area */}
                 {cloudStatus.type && (
                   <div className={`p-3 rounded-xl text-[10px] font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-1 ${
                     cloudStatus.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :

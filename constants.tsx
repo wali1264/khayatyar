@@ -45,8 +45,9 @@ export const NAVIGATION_ITEMS = [
 ];
 
 export const STATUS_COLORS: Record<string, string> = {
-  'در انتظار': 'bg-gray-100 text-gray-700',
+  'در انتظار دوخت': 'bg-gray-100 text-gray-700',
   'در حال دوخت': 'bg-blue-100 text-blue-700',
-  'آماده تحویل': 'bg-yellow-100 text-yellow-700',
-  'تحویل داده شده': 'bg-green-100 text-green-700',
+  'دوخته شده': 'bg-indigo-100 text-indigo-700',
+  'آماده تحویل': 'bg-amber-100 text-amber-700 border-amber-200',
+  'تحویل داده شده': 'bg-emerald-100 text-emerald-700',
 };

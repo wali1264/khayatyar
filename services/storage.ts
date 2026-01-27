@@ -1,5 +1,5 @@
 
-import { Customer, Order, Transaction } from '../types';
+import { Customer, Order, Transaction, ShopInfo } from '../types';
 
 const DB_NAME = 'KhayatiyarDB';
 const DB_VERSION = 2; 
@@ -16,7 +16,11 @@ const STORAGE_KEYS = {
   
   APPROVAL_CACHE: 'approval_status_cache',
   MIGRATION_DONE: 'migration_v1_done',
-  VISIBLE_MEASUREMENTS: 'visible_measurements_config'
+  VISIBLE_MEASUREMENTS: 'visible_measurements_config',
+
+  // کلیدهای جدید شخصی‌سازی
+  SHOP_INFO: 'shop_info_config',
+  SIMPLE_LABELS: 'simple_measurement_labels_config'
 };
 
 interface ApprovalCache {
@@ -132,6 +136,23 @@ export const StorageService = {
   },
   saveSimpleTransactions: async (transactions: Transaction[]) => {
     await db.set(STORAGE_KEYS.SIMPLE_TRANSACTIONS, transactions);
+  },
+
+  // اطلاعات فروشگاه
+  getShopInfo: async (): Promise<ShopInfo | null> => {
+    return await db.get<ShopInfo>(STORAGE_KEYS.SHOP_INFO);
+  },
+  saveShopInfo: async (info: ShopInfo) => {
+    await db.set(STORAGE_KEYS.SHOP_INFO, info);
+  },
+
+  // برچسب‌های شخصی‌سازی شده برای حالت ساده
+  getSimpleLabels: async (defaultLabels: Record<string, string>): Promise<Record<string, string>> => {
+    const saved = await db.get<Record<string, string>>(STORAGE_KEYS.SIMPLE_LABELS);
+    return saved || defaultLabels;
+  },
+  saveSimpleLabels: async (labels: Record<string, string>) => {
+    await db.set(STORAGE_KEYS.SIMPLE_LABELS, labels);
   },
 
   getApprovalCache: async (): Promise<ApprovalCache | null> => {
