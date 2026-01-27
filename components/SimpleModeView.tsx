@@ -274,85 +274,130 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onExit }) => {
     setTimeout(() => {
       window.print();
       setPrintingOrder(null);
-    }, 200);
+    }, 250);
   };
 
   const isQuickOrderInvalid = quickOrderPrices.received > (quickOrderPrices.cloth + quickOrderPrices.sewing);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-['Vazirmatn'] select-none">
-      {/* Print Overlay CSS */}
+      {/* 
+        Modern Print CSS Strategy:
+        1. display: none for everything non-essential to solve blank page on mobile.
+        2. Fixed 80mm width to solve cutoff issues.
+        3. Standardized mm units for precise printing.
+      */}
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          .print-section, .print-section * { visibility: visible; }
-          .print-section { 
-            position: absolute; 
-            left: 0; 
-            top: 0; 
-            width: 100%; 
-            padding: 0; 
-            margin: 0;
-            background: white;
+          /* Global Print Reset */
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            background: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
+
+          /* Hard exclusion of non-print elements */
+          header, .no-print, button, input, .fixed, .absolute:not(.print-section), [role="dialog"], aside {
+            display: none !important;
+            height: 0 !important;
+            overflow: hidden !important;
+          }
+
+          /* Force root container to be visible but clean */
+          #root, main {
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          /* Receipt Style (80mm Thermal Standard) */
+          .print-section {
+            display: block !important;
+            visibility: visible !important;
+            width: 80mm !important;
+            min-width: 80mm !important;
+            margin: 0 auto !important;
+            padding: 8mm !important;
+            background: white !important;
+            box-sizing: border-box !important;
+            direction: rtl !important;
+            font-family: 'Vazirmatn', sans-serif !important;
+            color: black !important;
+            position: relative !important;
+          }
+
           @page {
             size: 80mm auto;
             margin: 0;
           }
-          header, footer, button, .no-print { display: none !important; }
         }
       `}</style>
 
       {/* Hidden Print Content */}
       {printingOrder && (
-        <div className="print-section hidden print:block text-slate-900 p-2" dir="rtl">
-          <div className="text-center border-b border-slate-300 pb-3 mb-3">
-            <h1 className="text-lg font-black mb-1">{shopInfo.name || 'خیاطیار'}</h1>
-            {shopInfo.tailorName && <p className="text-xs font-bold mb-0.5">استاد: {shopInfo.tailorName}</p>}
-            {shopInfo.phone && <p className="text-xs font-bold mb-0.5" dir="ltr">{shopInfo.phone}</p>}
-            {shopInfo.address && <p className="text-[10px] text-slate-600 px-2">{shopInfo.address}</p>}
+        <div className="print-section hidden print:block" dir="rtl">
+          <div className="text-center border-b-2 border-slate-950 pb-4 mb-4">
+            <h1 className="text-[18pt] font-black mb-1">{shopInfo.name || 'خیاطیار'}</h1>
+            {shopInfo.tailorName && <p className="text-[10pt] font-bold">استاد: {shopInfo.tailorName}</p>}
+            {shopInfo.phone && <p className="text-[10pt] font-bold" dir="ltr">{shopInfo.phone}</p>}
+            {shopInfo.address && <p className="text-[8pt] text-slate-700 mt-1">{shopInfo.address}</p>}
           </div>
 
-          <div className="mb-4 text-xs space-y-1">
-            <div className="flex justify-between font-bold"><span>مشتری:</span> <span>{printingOrder.customer.name}</span></div>
-            <div className="flex justify-between text-slate-600"><span>تاریخ:</span> <span>{printingOrder.order.dateCreated}</span></div>
+          <div className="mb-5 space-y-2">
+            <div className="flex justify-between text-[11pt]">
+              <span className="font-bold">مشتری:</span>
+              <span className="font-black">{printingOrder.customer.name}</span>
+            </div>
+            <div className="flex justify-between text-[10pt] text-slate-800">
+              <span>تاریخ سفارش:</span>
+              <span className="font-bold">{printingOrder.order.dateCreated}</span>
+            </div>
           </div>
 
-          <div className="mb-4">
-            <div className="font-black text-xs border-b border-slate-100 pb-1 mb-2">شرح سفارش: {printingOrder.order.description}</div>
-            <div className="grid grid-cols-1 gap-1">
+          <div className="mb-6">
+            <div className="text-[11pt] font-black border-b border-slate-200 pb-2 mb-3">شرح: {printingOrder.order.description}</div>
+            <div className="grid grid-cols-1 gap-2">
               {Object.entries(printingOrder.order.styleDetails || {}).map(([key, value]) => value && (
-                <div key={key} className="flex justify-between text-[11px]">
-                  <span className="text-slate-500">{measurementLabels[key] || key}:</span>
-                  <span className="font-bold">{value}</span>
+                <div key={key} className="flex justify-between text-[9pt] border-b border-dotted border-slate-100 pb-1">
+                  <span className="text-slate-600">{measurementLabels[key] || key}:</span>
+                  <span className="font-black">{value}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="border-t-2 border-slate-900 pt-3 space-y-2 mb-4">
-            <div className="flex justify-between text-xs"><span>قیمت پارچه:</span> <span>{(printingOrder.order.clothPrice || 0).toLocaleString()}</span></div>
-            <div className="flex justify-between text-xs"><span>اجرت دوخت:</span> <span>{(printingOrder.order.sewingFee || 0).toLocaleString()}</span></div>
-            <div className="flex justify-between text-sm font-black pt-1 border-t border-slate-200">
+          <div className="border-t-2 border-slate-950 pt-4 space-y-2">
+            <div className="flex justify-between text-[10pt]">
+              <span>قیمت پارچه:</span>
+              <span>{(printingOrder.order.clothPrice || 0).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-[10pt]">
+              <span>اجرت دوخت:</span>
+              <span>{(printingOrder.order.sewingFee || 0).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-[13pt] font-black pt-2 border-t border-slate-300">
               <span>جمع کل:</span>
-              <span>{(printingOrder.order.totalPrice || 0).toLocaleString()} افغانی</span>
+              <span>{(printingOrder.order.totalPrice || 0).toLocaleString()} <span className="text-[9pt]">افغانی</span></span>
             </div>
             
             {(() => {
               const debt = getOrderDebt(printingOrder.order.id);
               return debt > 0.1 ? (
-                <div className="flex justify-between text-sm font-black text-rose-600 pt-1">
+                <div className="flex justify-between text-[12pt] font-black text-rose-700 pt-1">
                   <span>باقیمانده (بدهی):</span>
-                  <span>{debt.toLocaleString()} افغانی</span>
+                  <span>{debt.toLocaleString()}</span>
                 </div>
               ) : (
-                <div className="text-center font-black text-emerald-600 py-1 bg-emerald-50 rounded mt-2">تصفیه کامل</div>
+                <div className="text-center font-black text-emerald-700 py-2 bg-slate-50 rounded-xl mt-3 text-[11pt] border border-emerald-100">تصفیه کامل</div>
               );
             })()}
           </div>
 
-          <div className="text-center text-[10px] font-bold text-slate-400 mt-8 border-t border-dotted border-slate-300 pt-4">
-            از اعتماد شما سپاسگزاریم
+          <div className="text-center text-[8pt] font-bold text-slate-400 mt-10 border-t border-slate-100 pt-4">
+            از انتخاب شما سپاسگزاریم
           </div>
         </div>
       )}
@@ -524,7 +569,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onExit }) => {
                                     className={`p-2 rounded-xl transition-all active:scale-90 shadow-sm border ${STATUS_COLORS[order.status] || 'bg-slate-100 text-slate-400'}`}
                                     title="تغییر وضعیت"
                                   >
-                                    <Bell size={16} />
+                                    <Bell size={16} className={STATUS_COLORS[order.status]?.split(' ')[1]} />
                                   </button>
                                   <button 
                                     onClick={() => handlePrint(order, customer)}
