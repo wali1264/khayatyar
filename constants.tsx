@@ -32,7 +32,7 @@ export const SIMPLE_MEASUREMENT_LABELS: Record<string, string> = {
   height: 'قد',
   sleeveLength: 'آستین',
   shoulder: 'شانه',
-  neck: 'یخن',
+  neck: 'یقه',
   waist: 'کمر',
   outseam: 'قد شلوار',
   ankle: 'پاچه',
