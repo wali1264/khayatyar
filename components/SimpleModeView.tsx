@@ -36,16 +36,17 @@ import {
   Scissors as ScissorsIcon,
   CheckCircle,
   Gift,
-  Handshake
+  Handshake,
+  Database
 } from 'lucide-react';
 
 interface SimpleModeViewProps {
-  onExit: () => void;
+  onOpenBackup?: () => void;
 }
 
 const PROTECTED_KEYS = ['height', 'sleeveLength', 'shoulder', 'neck', 'waist', 'outseam', 'ankle'];
 
-const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onExit }) => {
+const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -281,15 +282,8 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onExit }) => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-['Vazirmatn'] select-none">
-      {/* 
-        Modern Print CSS Strategy:
-        1. display: none for everything non-essential to solve blank page on mobile.
-        2. Fixed 80mm width to solve cutoff issues.
-        3. Standardized mm units for precise printing.
-      */}
       <style>{`
         @media print {
-          /* Global Print Reset */
           html, body {
             margin: 0 !important;
             padding: 0 !important;
@@ -298,22 +292,16 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onExit }) => {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-
-          /* Hard exclusion of non-print elements */
           header, .no-print, button, input, .fixed, .absolute:not(.print-section), [role="dialog"], aside {
             display: none !important;
             height: 0 !important;
             overflow: hidden !important;
           }
-
-          /* Force root container to be visible but clean */
           #root, main {
             display: block !important;
             margin: 0 !important;
             padding: 0 !important;
           }
-
-          /* Receipt Style (80mm Thermal Standard) */
           .print-section {
             display: block !important;
             visibility: visible !important;
@@ -328,7 +316,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onExit }) => {
             color: black !important;
             position: relative !important;
           }
-
           @page {
             size: 80mm auto;
             margin: 0;
@@ -397,37 +384,38 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onExit }) => {
           </div>
 
           <div className="text-center text-[8pt] font-bold text-slate-400 mt-10 border-t border-slate-100 pt-4">
-            از انتخاب شما سپاسگزاریم
+            از اعتماد شما سپاسگزاریم
           </div>
         </div>
       )}
 
       <header className="bg-white px-6 py-5 flex justify-between items-center shadow-sm sticky top-0 z-50 no-print">
         <div className="flex items-center gap-3">
-          <div className="bg-indigo-600 p-2 rounded-xl text-white shadow-lg shadow-indigo-200">
-            <Zap size={20} />
+          <div className="bg-indigo-600 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-600/20">
+            <ScissorsIcon size={22} />
           </div>
           <div>
-            <h1 className="text-xl font-black text-slate-800">{shopInfo.name || 'خیاطیار (حالت ساده)'}</h1>
-            {shopInfo.phone && <div className="text-[9px] text-slate-400 font-bold" dir="ltr">{shopInfo.phone}</div>}
+            <h1 className="text-xl font-black text-slate-800 leading-none">{shopInfo.name || 'خیاطیار'}</h1>
+            {shopInfo.phone && <div className="text-[9px] text-slate-400 font-bold mt-1.5" dir="ltr">{shopInfo.phone}</div>}
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button 
+            onClick={onOpenBackup}
+            className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all active:scale-90"
+            title="مدیریت داده‌ها و پشتیبانی"
+          >
+            <Database size={20} />
+          </button>
           <button 
             onClick={() => {
               setActiveSettingsTab('SHOP');
               setShowSettingsModal(true);
             }}
             className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all active:scale-90"
+            title="تنظیمات خیاطی"
           >
             <Settings size={20} className="animate-[spin_4s_linear_infinite]" />
-          </button>
-          <button 
-            onClick={onExit}
-            className="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-xs font-bold hover:bg-rose-100 transition-all"
-          >
-            <LogOut size={16} />
-            خروج
           </button>
         </div>
       </header>
