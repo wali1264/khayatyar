@@ -45,7 +45,9 @@ import {
   ArrowUpRight,
   Phone,
   MessageSquare,
-  CalendarDays
+  CalendarDays,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 
 interface SimpleModeViewProps {
@@ -77,6 +79,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   const [showReportsModal, setShowReportsModal] = useState(false);
   const [showRemindersModal, setShowRemindersModal] = useState(false);
   const [reminderThreshold, setReminderThreshold] = useState(Number(localStorage.getItem('reminder_threshold') || 10));
+  const [autoSmsEnabled, setAutoSmsEnabled] = useState(localStorage.getItem('auto_sms_enabled') !== 'false');
 
   const [activeSettingsTab, setActiveSettingsTab] = useState<'SHOP' | 'FIELDS'>('SHOP');
   const [activeFieldsSubTab, setActiveFieldsSubTab] = useState<'RENAME' | 'CREATE'>('RENAME');
@@ -94,7 +97,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
       let custData = await StorageService.getSimpleCustomers();
       
       // Migration logic: Only assign codes if they are missing
-      // We calculate max existing code to avoid duplicates
       let maxCode = custData.reduce((max, c) => (c.code !== undefined && c.code > max ? c.code : max), 0);
       let needsMigration = false;
 
@@ -140,11 +142,10 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     const now = Date.now();
     const thresholdMs = reminderThreshold * 24 * 60 * 60 * 1000;
 
-    // 1. Uncollected Clothes (Ready/Sewn and stayed longer than threshold)
+    // 1. Uncollected Clothes
     const pickupReminders = orders.filter(o => {
       const isPendingPickup = o.status === OrderStatus.READY || o.status === OrderStatus.SEWN;
       if (!isPendingPickup) return false;
-      
       const createdAt = parseInt(o.id) || 0;
       return (now - createdAt) > thresholdMs;
     }).map(o => ({
@@ -203,9 +204,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     if (typeof showCustomerModal === 'object') {
       updated = customers.map(c => c.id === showCustomerModal.id ? { ...c, ...data } : c);
     } else {
-      // Find the absolute maximum code to ensure next one is unique
       const maxCode = customers.reduce((max, c) => (c.code !== undefined && c.code > max ? c.code : max), 0);
-      
       const newCustomer: Customer = {
         id: Date.now().toString(),
         code: maxCode + 1,
@@ -307,7 +306,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     setOrders(updatedOrders);
     await StorageService.saveSimpleOrders(updatedOrders);
 
-    if (newStatus === OrderStatus.READY) {
+    if (newStatus === OrderStatus.READY && autoSmsEnabled) {
       sendPickupSMS(orderId);
     }
     setShowStatusModal(null);
@@ -525,11 +524,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
             title="مرکز یادآوری‌ها"
           >
             <Bell size={20} />
-            {totalReminderCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white animate-bounce">
-                {totalReminderCount}
-              </span>
-            )}
           </button>
           <button 
             onClick={() => setShowReportsModal(true)}
@@ -1212,6 +1206,25 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
               </h2>
               <button onClick={() => setShowStatusModal(null)} className="p-2 bg-slate-100 rounded-full active:scale-90 transition-all"><X size={18}/></button>
             </div>
+
+            {/* Toggle Switch for Auto SMS */}
+            <div className="bg-amber-50 p-4 rounded-2xl flex items-center justify-between border border-amber-100 mb-2">
+              <div className="flex items-center gap-2">
+                <MessageSquare size={18} className="text-amber-600" />
+                <span className="text-xs font-black text-slate-700">ارسال خودکار پیامک تحویل</span>
+              </div>
+              <button 
+                onClick={() => {
+                  const newState = !autoSmsEnabled;
+                  setAutoSmsEnabled(newState);
+                  localStorage.setItem('auto_sms_enabled', newState.toString());
+                }}
+                className="transition-all active:scale-90"
+              >
+                {autoSmsEnabled ? <ToggleRight className="text-emerald-500" size={32} /> : <ToggleLeft className="text-slate-300" size={32} />}
+              </button>
+            </div>
+
             <div className="space-y-3">
               {[
                 { s: OrderStatus.PENDING, label: 'در انتظار دوخت', icon: <Clock size={18} />, color: 'text-slate-500 bg-slate-50' },

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Customer, 
   Order, 
@@ -193,6 +193,9 @@ const App: React.FC = () => {
   
   const [autoBackupEnabled, setAutoBackupEnabled] = useState(localStorage.getItem('auto_cloud_backup') === 'true');
 
+  // جلوگیری از بررسی مجدد در یک نشست (Session) واحد
+  const sessionVerified = useRef(false);
+
   useEffect(() => {
     const initApp = async () => {
       await StorageService.init();
@@ -210,6 +213,7 @@ const App: React.FC = () => {
         setUser(null);
         setIsApproved(false);
         setIsVerifying(false);
+        sessionVerified.current = false;
       }
     });
 
@@ -219,19 +223,25 @@ const App: React.FC = () => {
   }, []);
 
   const startVerificationFlow = async (userId: string) => {
+    // استراتژی Cache-First: ابتدا کش را چک می‌کنیم
+    const cached = await StorageService.getApprovalCache();
+    
+    // اگر قبلاً تایید شده و کش معتبر داریم، لودینگ نشان نمی‌دهیم
+    if (cached && cached.status) {
+      setIsApproved(true);
+      setIsVerifying(false);
+      // بررسی بی‌صدا در پس‌زمینه
+      checkApprovalSilent(userId);
+      return;
+    }
+
+    // اگر کش نداریم یا تایید نشده، روند عادی لودینگ را طی می‌کنیم
     setIsVerifying(true);
     const startTime = Date.now();
-    
-    // اجرای منطق تایید
     await checkApproval(userId);
-    
-    // اطمینان از گذشت حداقل ۲ ثانیه
     const elapsed = Date.now() - startTime;
-    const remainingDelay = Math.max(0, 2000 - elapsed);
-    
-    setTimeout(() => {
-      setIsVerifying(false);
-    }, remainingDelay);
+    const remainingDelay = Math.max(0, 1500 - elapsed);
+    setTimeout(() => setIsVerifying(false), remainingDelay);
   };
 
   const checkUser = async () => {
@@ -244,11 +254,28 @@ const App: React.FC = () => {
     setAuthLoading(false);
   };
 
+  // بررسی وضعیت بدون مسدود کردن رابط کاربری
+  const checkApprovalSilent = async (userId: string) => {
+    if (!navigator.onLine || sessionVerified.current) return;
+    try {
+      const { data } = await AuthService.getProfile(userId);
+      if (data) {
+        const approvalStatus = data.is_approved;
+        if (approvalStatus !== isApproved) {
+          setIsApproved(approvalStatus);
+        }
+        await StorageService.saveApprovalCache(approvalStatus);
+        sessionVerified.current = true;
+        if (approvalStatus) handleAutoBackupCheck(userId);
+      }
+    } catch (err) {
+      console.warn("Silent verification failed.");
+    }
+  };
+
   const checkApproval = async (userId: string) => {
     const isOnline = navigator.onLine;
     const cached = await StorageService.getApprovalCache();
-    const now = Date.now();
-    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 
     if (isOnline) {
       try {
@@ -257,6 +284,7 @@ const App: React.FC = () => {
           const approvalStatus = data.is_approved;
           setIsApproved(approvalStatus);
           await StorageService.saveApprovalCache(approvalStatus);
+          sessionVerified.current = true;
           if (approvalStatus) {
             handleAutoBackupCheck(userId);
           }
@@ -267,7 +295,6 @@ const App: React.FC = () => {
       }
     }
 
-    // Fallback to cache if offline or server failed
     if (cached) {
       setIsApproved(cached.status);
       if (cached.status && isOnline) {
@@ -422,7 +449,6 @@ const App: React.FC = () => {
     );
   }
 
-  // نمایش لودینگ خنثی هنگام تایید وضعیت لایسنس
   if (isVerifying) {
     return <LoadingView />;
   }
