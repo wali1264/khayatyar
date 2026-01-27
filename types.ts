@@ -62,6 +62,7 @@ export interface ShopInfo {
 
 export interface Customer {
   id: string;
+  code?: number; // کد اشتراک عددی (ترتیبی)
   name: string;
   phone: string;
   address?: string;

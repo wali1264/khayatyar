@@ -31,7 +31,8 @@ import {
   Eye, 
   EyeOff, 
   CheckCircle2, 
-  AlertCircle
+  AlertCircle,
+  Cpu
 } from 'lucide-react';
 import SimpleModeView from './components/SimpleModeView';
 
@@ -59,76 +60,87 @@ const AuthView = ({
           <p className="text-slate-400 text-sm font-bold">همیار هوشمند خیاطان برتر</p>
         </div>
 
-        <>
-          <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-1">
-            <button 
-              onClick={() => setAuthMode('LOGIN')}
-              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${authMode === 'LOGIN' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:bg-white/50'}`}
-            >
-              ورود
-            </button>
-            <button 
-              onClick={() => setAuthMode('REGISTER')}
-              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${authMode === 'REGISTER' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:bg-white/50'}`}
-            >
-              ثبت‌نام
-            </button>
+        <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-1">
+          <button 
+            onClick={() => setAuthMode('LOGIN')}
+            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${authMode === 'LOGIN' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:bg-white/50'}`}
+          >
+            ورود
+          </button>
+          <button 
+            onClick={() => setAuthMode('REGISTER')}
+            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${authMode === 'REGISTER' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:bg-white/50'}`}
+          >
+            ثبت‌نام
+          </button>
+        </div>
+
+        <form onSubmit={handleAuth} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 mr-2">ایمیل شما</label>
+            <div className="relative">
+              <Mail className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+              <input 
+                type="email" 
+                required 
+                value={email} 
+                onChange={e => setEmail(e.target.value)}
+                className="w-full pr-12 pl-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                placeholder="tailor@example.com"
+                dir="ltr"
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 mr-2">رمز عبور</label>
+            <div className="relative">
+              <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+              <input 
+                type={showPassword ? "text" : "password"}
+                required 
+                value={password} 
+                onChange={e => setPassword(e.target.value)}
+                className="w-full pr-12 pl-12 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                placeholder="••••••••"
+                dir="ltr"
+              />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
-          <form onSubmit={handleAuth} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 mr-2">ایمیل شما</label>
-              <div className="relative">
-                <Mail className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                <input 
-                  type="email" 
-                  required 
-                  value={email} 
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full pr-12 pl-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                  placeholder="tailor@example.com"
-                  dir="ltr"
-                />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 mr-2">رمز عبور</label>
-              <div className="relative">
-                <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                <input 
-                  type={showPassword ? "text" : "password"}
-                  required 
-                  value={password} 
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full pr-12 pl-12 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                  placeholder="••••••••"
-                  dir="ltr"
-                />
-                <button 
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
+          {authError && <div className="p-4 bg-rose-50 text-rose-600 text-xs font-bold rounded-2xl text-center leading-relaxed">{authError}</div>}
 
-            {authError && <div className="p-4 bg-rose-50 text-rose-600 text-xs font-bold rounded-2xl text-center leading-relaxed">{authError}</div>}
-
-            <button 
-              type="submit" 
-              disabled={authLoading}
-              className="w-full py-4 bg-indigo-600 text-white rounded-[1.5rem] font-bold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
-            >
-              {authLoading ? <Loader2 className="animate-spin" size={20} /> : (authMode === 'LOGIN' ? 'ورود به حساب' : 'ایجاد حساب کاربری')}
-            </button>
-          </form>
-        </>
+          <button 
+            type="submit" 
+            disabled={authLoading}
+            className="w-full py-4 bg-indigo-600 text-white rounded-[1.5rem] font-bold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+          >
+            {authLoading ? <Loader2 className="animate-spin" size={20} /> : (authMode === 'LOGIN' ? 'ورود به حساب' : 'ایجاد حساب کاربری')}
+          </button>
+        </form>
       </div>
     </div>
   );
 };
+
+const LoadingView = () => (
+  <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
+    <div className="relative w-24 h-24 mb-8">
+      <div className="absolute inset-0 bg-indigo-600/20 rounded-[2rem] animate-ping"></div>
+      <div className="relative bg-white border-2 border-indigo-600 w-full h-full rounded-[2rem] flex items-center justify-center text-indigo-600 shadow-xl">
+        <Cpu size={40} className="animate-pulse" />
+      </div>
+    </div>
+    <h2 className="text-xl font-black text-slate-800 animate-pulse">در حال بارگذاری...</h2>
+    <p className="text-slate-400 text-sm mt-2 font-bold tracking-tight">لطفاً شکیبا باشید</p>
+  </div>
+);
 
 const ApprovalView = ({ user, checkApproval, signOut }: any) => (
   <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
@@ -168,6 +180,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [isApproved, setIsApproved] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [authMode, setAuthMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -192,10 +205,11 @@ const App: React.FC = () => {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
         setUser(session.user);
-        checkApproval(session.user.id);
+        startVerificationFlow(session.user.id);
       } else {
         setUser(null);
         setIsApproved(false);
+        setIsVerifying(false);
       }
     });
 
@@ -204,12 +218,28 @@ const App: React.FC = () => {
     };
   }, []);
 
+  const startVerificationFlow = async (userId: string) => {
+    setIsVerifying(true);
+    const startTime = Date.now();
+    
+    // اجرای منطق تایید
+    await checkApproval(userId);
+    
+    // اطمینان از گذشت حداقل ۲ ثانیه
+    const elapsed = Date.now() - startTime;
+    const remainingDelay = Math.max(0, 2000 - elapsed);
+    
+    setTimeout(() => {
+      setIsVerifying(false);
+    }, remainingDelay);
+  };
+
   const checkUser = async () => {
     setAuthLoading(true);
     const session = await AuthService.getSession();
     if (session) {
       setUser(session.user);
-      await checkApproval(session.user.id);
+      await startVerificationFlow(session.user.id);
     }
     setAuthLoading(false);
   };
@@ -221,24 +251,23 @@ const App: React.FC = () => {
     const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 
     if (isOnline) {
-      if (!cached || (now - cached.timestamp > TWENTY_FOUR_HOURS)) {
-        try {
-          const { data } = await AuthService.getProfile(userId);
-          if (data) {
-            const approvalStatus = data.is_approved;
-            setIsApproved(approvalStatus);
-            await StorageService.saveApprovalCache(approvalStatus);
-            if (approvalStatus) {
-              handleAutoBackupCheck(userId);
-            }
-            return;
+      try {
+        const { data } = await AuthService.getProfile(userId);
+        if (data) {
+          const approvalStatus = data.is_approved;
+          setIsApproved(approvalStatus);
+          await StorageService.saveApprovalCache(approvalStatus);
+          if (approvalStatus) {
+            handleAutoBackupCheck(userId);
           }
-        } catch (err) {
-          console.warn("Online approval check failed...");
+          return;
         }
+      } catch (err) {
+        console.warn("Online approval check failed, falling back to cache.");
       }
     }
 
+    // Fallback to cache if offline or server failed
     if (cached) {
       setIsApproved(cached.status);
       if (cached.status && isOnline) {
@@ -391,6 +420,11 @@ const App: React.FC = () => {
         handleAuth={handleAuth}
       />
     );
+  }
+
+  // نمایش لودینگ خنثی هنگام تایید وضعیت لایسنس
+  if (isVerifying) {
+    return <LoadingView />;
   }
 
   if (!isApproved) {
