@@ -47,7 +47,8 @@ import {
   MessageSquare,
   CalendarDays,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Share2
 } from 'lucide-react';
 
 interface SimpleModeViewProps {
@@ -78,6 +79,8 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showReportsModal, setShowReportsModal] = useState(false);
   const [showRemindersModal, setShowRemindersModal] = useState(false);
+  const [showInvoiceOptions, setShowInvoiceOptions] = useState<{order: Order, customer: Customer} | null>(null);
+  
   const [reminderThreshold, setReminderThreshold] = useState(Number(localStorage.getItem('reminder_threshold') || 10));
   const [autoSmsEnabled, setAutoSmsEnabled] = useState(localStorage.getItem('auto_sms_enabled') !== 'false');
 
@@ -95,11 +98,8 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   useEffect(() => {
     const loadData = async () => {
       let custData = await StorageService.getSimpleCustomers();
-      
-      // Migration logic: Only assign codes if they are missing
       let maxCode = custData.reduce((max, c) => (c.code !== undefined && c.code > max ? c.code : max), 0);
       let needsMigration = false;
-
       const migratedData = custData.map(c => {
         if (c.code === undefined) {
           needsMigration = true;
@@ -108,19 +108,15 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
         }
         return c;
       });
-
       if (needsMigration) {
         custData = migratedData;
         await StorageService.saveSimpleCustomers(custData);
       }
-      
       setCustomers(custData);
       setOrders(await StorageService.getSimpleOrders());
       setTransactions(await StorageService.getSimpleTransactions());
-      
       const savedInfo = await StorageService.getShopInfo();
       if (savedInfo) setShopInfo(savedInfo);
-      
       const savedLabels = await StorageService.getSimpleLabels(DEFAULT_LABELS);
       setMeasurementLabels(savedLabels);
     };
@@ -137,12 +133,9 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     ).reverse();
   }, [customers, searchTerm]);
 
-  // --- Reminders Calculation ---
   const reminders = useMemo(() => {
     const now = Date.now();
     const thresholdMs = reminderThreshold * 24 * 60 * 60 * 1000;
-
-    // 1. Uncollected Clothes
     const pickupReminders = orders.filter(o => {
       const isPendingPickup = o.status === OrderStatus.READY || o.status === OrderStatus.SEWN;
       if (!isPendingPickup) return false;
@@ -153,8 +146,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
       customer: customers.find(c => c.id === o.customerId),
       daysPassed: Math.floor((now - (parseInt(o.id) || now)) / (24 * 60 * 60 * 1000))
     }));
-
-    // 2. Financial Debt Reminders
     const debtReminders = customers.filter(c => c.balance > 0.1).map(c => {
       const lastOrder = orders.filter(o => o.customerId === c.id).slice(-1)[0];
       return {
@@ -163,11 +154,9 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
         lastOrderDate: lastOrder?.dateCreated || 'نامشخص'
       };
     });
-
     return { pickup: pickupReminders, debt: debtReminders };
   }, [orders, customers, reminderThreshold]);
 
-  // --- Statistics Calculations ---
   const stats = useMemo(() => {
     const today = new Date().toLocaleDateString('fa-IR');
     const todayIncome = transactions
@@ -290,7 +279,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     setOrders(updatedOrders);
     setTransactions(updatedTxs);
     setCustomers(updatedCustomers);
-
     await StorageService.saveSimpleOrders(updatedOrders);
     await StorageService.saveSimpleTransactions(updatedTxs);
     await StorageService.saveSimpleCustomers(updatedCustomers);
@@ -305,7 +293,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
     setOrders(updatedOrders);
     await StorageService.saveSimpleOrders(updatedOrders);
-
     if (newStatus === OrderStatus.READY && autoSmsEnabled) {
       sendPickupSMS(orderId);
     }
@@ -392,7 +379,26 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     setTimeout(() => {
       window.print();
       setPrintingOrder(null);
+      setShowInvoiceOptions(null);
     }, 250);
+  };
+
+  const handleWhatsAppShare = (order: Order, customer: Customer) => {
+    const debt = getOrderDebt(order.id);
+    const message = `📋 فاکتور خیاطی ${shopInfo.name || 'خیاطیار'}
+👤 مشتری: ${customer.name}
+📅 تاریخ: ${order.dateCreated}
+✂️ شرح: ${order.description}
+--------------------
+💰 قیمت کل: ${order.totalPrice?.toLocaleString()} افغانی
+${debt > 0.1 ? `🔴 مانده حساب: ${debt.toLocaleString()} افغانی` : '✅ تصفیه کامل'}
+--------------------
+🙏 از اعتماد شما سپاسگزاریم.
+${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
+
+    const waUrl = `https://wa.me/${customer.phone.replace(/^0/, '93')}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank');
+    setShowInvoiceOptions(null);
   };
 
   const isQuickOrderInvalid = quickOrderPrices.received > (quickOrderPrices.cloth + quickOrderPrices.sewing);
@@ -700,9 +706,9 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
                                     <Bell size={16} className={STATUS_COLORS[order.status]?.split(' ')[1]} />
                                   </button>
                                   <button 
-                                    onClick={() => handlePrint(order, customer)}
+                                    onClick={() => setShowInvoiceOptions({order, customer})}
                                     className="p-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all active:scale-90 shadow-sm border border-slate-200"
-                                    title="چاپ فاکتور"
+                                    title="عملیات فاکتور"
                                   >
                                     <Printer size={16} />
                                   </button>
@@ -802,11 +808,51 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
         <UserPlus size={28} />
       </button>
 
+      {/* Invoice Options Modal */}
+      {showInvoiceOptions && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-6 no-print">
+          <div className="absolute inset-0" onClick={() => setShowInvoiceOptions(null)} />
+          <div className="relative bg-white w-full max-w-sm rounded-[2.5rem] p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+             <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-2">
+                   <Share2 size={32} />
+                </div>
+                <h3 className="text-lg font-black text-slate-800">عملیات فاکتور</h3>
+                <p className="text-xs text-slate-400 font-bold">انتخاب کنید که مایل به انجام کدام هستید؟</p>
+             </div>
+
+             <div className="space-y-3">
+                <button 
+                  onClick={() => handleWhatsAppShare(showInvoiceOptions.order, showInvoiceOptions.customer)}
+                  className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg shadow-emerald-200 active:scale-95 transition-all"
+                >
+                  <MessageSquare size={20} />
+                  ارسال در واتس‌اپ
+                </button>
+                <button 
+                  onClick={() => handlePrint(showInvoiceOptions.order, showInvoiceOptions.customer)}
+                  className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 active:scale-95 transition-all"
+                >
+                  <Printer size={20} />
+                  چاپ فاکتور حرارتی
+                </button>
+             </div>
+
+             <button 
+              onClick={() => setShowInvoiceOptions(null)}
+              className="w-full py-3 text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors"
+             >
+               انصراف
+             </button>
+          </div>
+        </div>
+      )}
+
       {/* Reminders Modal */}
       {showRemindersModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-end sm:items-center justify-center no-print">
           <div className="absolute inset-0" onClick={() => setShowRemindersModal(false)} />
-          <div className="relative bg-white w-full max-w-4xl rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-8 animate-in slide-in-from-bottom-10 max-h-[92vh] overflow-y-auto no-scrollbar">
+          <div className="relative bg-white w-full max-w-3xl sm:mx-auto rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-8 animate-in slide-in-from-bottom-10 max-h-[92vh] overflow-y-auto no-scrollbar">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
                 <Bell className="text-amber-500" />
@@ -839,7 +885,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Debt Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between px-2">
                   <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
@@ -871,7 +916,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
                 </div>
               </div>
 
-              {/* Pickup Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between px-2">
                   <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
@@ -903,8 +947,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
                 </div>
               </div>
             </div>
-
-            <p className="text-center text-[10px] font-bold text-slate-400">سیستم یادآور به صورت خودکار موارد مشکوک به تاخیر را شناسایی و لیست می‌کند.</p>
           </div>
         </div>
       )}
@@ -913,7 +955,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
       {showReportsModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-end sm:items-center justify-center no-print">
           <div className="absolute inset-0" onClick={() => setShowReportsModal(false)} />
-          <div className="relative bg-white w-full max-w-2xl rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-8 animate-in slide-in-from-bottom-10 max-h-[92vh] overflow-y-auto no-scrollbar">
+          <div className="relative bg-white w-full max-w-xl mx-auto rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-8 animate-in slide-in-from-bottom-10 max-h-[92vh] overflow-y-auto no-scrollbar">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
                 <BarChart3 className="text-indigo-600" />
@@ -977,26 +1019,14 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
                   })}
                </div>
             </div>
-
-            <div className="bg-slate-900 text-white p-6 rounded-[2.5rem] flex items-center justify-between">
-              <div>
-                <div className="text-[10px] font-black text-indigo-300 uppercase">نرخ بهره‌وری کل</div>
-                <div className="text-xl font-black">
-                  {stats.totalOrders > 0 ? Math.round((stats.completedOrders / stats.totalOrders) * 100) : 0}% موفقیت در تحویل
-                </div>
-              </div>
-              <TrendingUp className="text-emerald-400" size={32} />
-            </div>
-
-            <p className="text-center text-[10px] font-bold text-slate-400">این گزارش بر اساس اطلاعات ثبت شده در سیستم تولید شده است.</p>
           </div>
         </div>
       )}
 
       {showCustomerModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center no-print">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center no-print p-4">
           <div className="absolute inset-0" onClick={() => setShowCustomerModal(false)} />
-          <div className="relative bg-white w-full max-lg rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom-10 max-h-[90vh] overflow-y-auto no-scrollbar">
+          <div className="relative bg-white w-full max-w-lg mx-auto rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom-10 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-black text-slate-800 flex items-center gap-3">
                 <UserPlus className="text-indigo-600" />
@@ -1016,7 +1046,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
                 measurements: m
               });
             }} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-sm font-black text-slate-800 mr-2 uppercase">نام مشتری</label>
                   <input name="name" required defaultValue={typeof showCustomerModal === 'object' ? (showCustomerModal as Customer).name : ''} className="w-full px-5 py-4 bg-slate-50 rounded-2xl focus:ring-2 ring-indigo-400 outline-none font-bold" placeholder="مثلاً: علی"/>
@@ -1049,9 +1079,9 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
       )}
 
       {showOrderModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center no-print">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center no-print p-4">
           <div className="absolute inset-0" onClick={() => setShowOrderModal(null)} />
-          <div className="relative bg-white w-full max-md rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom-10 border-t-8 border-indigo-600 overflow-hidden max-h-[90vh] overflow-y-auto no-scrollbar">
+          <div className="relative bg-white w-full max-w-md mx-auto rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom-10 border-t-8 border-indigo-600 overflow-hidden max-h-[90vh] overflow-y-auto no-scrollbar">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-black text-slate-800 flex items-center gap-3">
                 <ShoppingBag className="text-indigo-600" />
@@ -1152,7 +1182,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
                   disabled={isQuickOrderInvalid}
                   onClick={() => {
                     const title = (document.getElementById('orderTitle') as HTMLInputElement).value;
-                    createQuickOrder(showOrderModal, title);
+                    createQuickOrder(showOrderModal!, title);
                   }}
                   className={`w-full py-5 rounded-[1.5rem] font-black shadow-xl flex items-center justify-center gap-3 transition-all ${isQuickOrderInvalid ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-indigo-600 text-white shadow-indigo-200 active:scale-95'}`}
                 >
@@ -1165,9 +1195,9 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
       )}
 
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center no-print">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center no-print p-4">
           <div className="absolute inset-0" onClick={() => setShowPaymentModal(null)} />
-          <div className="relative bg-white w-full max-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom-10">
+          <div className="relative bg-white w-full max-w-sm mx-auto rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom-10">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-black text-slate-800 flex items-center gap-3">
                 <DollarSign className="text-emerald-500" />
@@ -1196,9 +1226,9 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
       )}
 
       {showStatusModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center no-print">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center no-print p-4">
           <div className="absolute inset-0" onClick={() => setShowStatusModal(null)} />
-          <div className="relative bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom-10 border-t-8 border-indigo-600">
+          <div className="relative bg-white w-full max-w-sm mx-auto rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom-10 border-t-8 border-indigo-600">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-black text-slate-800 flex items-center gap-3">
                 <Bell className="text-indigo-600" />
@@ -1207,7 +1237,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
               <button onClick={() => setShowStatusModal(null)} className="p-2 bg-slate-100 rounded-full active:scale-90 transition-all"><X size={18}/></button>
             </div>
 
-            {/* Toggle Switch for Auto SMS */}
             <div className="bg-amber-50 p-4 rounded-2xl flex items-center justify-between border border-amber-100 mb-2">
               <div className="flex items-center gap-2">
                 <MessageSquare size={18} className="text-amber-600" />
@@ -1249,9 +1278,9 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
       )}
 
       {showSettingsModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-end sm:items-center justify-center no-print">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-end sm:items-center justify-center no-print p-4">
           <div className="absolute inset-0" onClick={() => setShowSettingsModal(false)} />
-          <div className="relative bg-white w-full max-w-lg rounded-t-[3rem] sm:rounded-[3rem] p-8 flex flex-col gap-6 animate-in slide-in-from-bottom-10 h-[92vh] sm:h-[85vh]">
+          <div className="relative bg-white w-full max-w-lg mx-auto rounded-t-[3rem] sm:rounded-[3rem] p-8 flex flex-col gap-6 animate-in slide-in-from-bottom-10 h-[92vh] sm:h-[85vh]">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-black text-slate-800 flex items-center gap-3">
                 <Settings className="text-indigo-600" />
@@ -1321,7 +1350,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
                 </form>
               ) : (
                 <div className="space-y-6 pb-6">
-                  {/* Sub Tabs for Field Management */}
                   <div className="flex bg-slate-50 p-1 rounded-2xl gap-1 border border-slate-100">
                     <button 
                       onClick={() => setActiveFieldsSubTab('RENAME')}
