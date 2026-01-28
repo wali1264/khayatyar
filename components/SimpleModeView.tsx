@@ -83,6 +83,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   
   const [reminderThreshold, setReminderThreshold] = useState(Number(localStorage.getItem('reminder_threshold') || 10));
   const [autoSmsEnabled, setAutoSmsEnabled] = useState(localStorage.getItem('auto_sms_enabled') !== 'false');
+  const [autoWhatsAppEnabled, setAutoWhatsAppEnabled] = useState(localStorage.getItem('auto_whatsapp_enabled') === 'true');
 
   const [activeSettingsTab, setActiveSettingsTab] = useState<'SHOP' | 'FIELDS'>('SHOP');
   const [activeFieldsSubTab, setActiveFieldsSubTab] = useState<'RENAME' | 'CREATE'>('RENAME');
@@ -293,8 +294,12 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
     setOrders(updatedOrders);
     await StorageService.saveSimpleOrders(updatedOrders);
-    if (newStatus === OrderStatus.READY && autoSmsEnabled) {
-      sendPickupSMS(orderId);
+    if (newStatus === OrderStatus.READY) {
+      if (autoWhatsAppEnabled) {
+        sendPickupWhatsApp(orderId);
+      } else if (autoSmsEnabled) {
+        sendPickupSMS(orderId);
+      }
     }
     setShowStatusModal(null);
   };
@@ -306,6 +311,16 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
       const message = `مشتری گرامی ${customer.name}، سفارش شما (${order.description}) آماده تحویل است. منتظر حضور شما در ${shopInfo.name || 'خیاطی'} هستیم.`;
       const smsUrl = `sms:${customer.phone}${navigator.userAgent.match(/iPhone/i) ? '&' : '?'}body=${encodeURIComponent(message)}`;
       window.location.href = smsUrl;
+    }
+  };
+
+  const sendPickupWhatsApp = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    const customer = customers.find(c => c.id === order?.customerId);
+    if (order && customer) {
+      const message = `مشتری گرامی ${customer.name}، سفارش شما (${order.description}) آماده تحویل است. منتظر حضور شما در ${shopInfo.name || 'خیاطی'} هستیم.`;
+      const waUrl = `https://wa.me/${customer.phone.replace(/^0/, '93')}?text=${encodeURIComponent(message)}`;
+      window.open(waUrl, '_blank');
     }
   };
 
@@ -1237,21 +1252,48 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
               <button onClick={() => setShowStatusModal(null)} className="p-2 bg-slate-100 rounded-full active:scale-90 transition-all"><X size={18}/></button>
             </div>
 
-            <div className="bg-amber-50 p-4 rounded-2xl flex items-center justify-between border border-amber-100 mb-2">
-              <div className="flex items-center gap-2">
-                <MessageSquare size={18} className="text-amber-600" />
-                <span className="text-xs font-black text-slate-700">ارسال خودکار پیامک تحویل</span>
+            <div className="grid grid-cols-2 gap-3 mb-2">
+              <div className="bg-amber-50 p-4 rounded-2xl flex flex-col items-center justify-center border border-amber-100 gap-2">
+                <div className="flex items-center gap-2">
+                  <MessageSquare size={16} className="text-amber-600" />
+                  <span className="text-[10px] font-black text-slate-700">پیامک خودکار</span>
+                </div>
+                <button 
+                  onClick={() => {
+                    const newState = !autoSmsEnabled;
+                    setAutoSmsEnabled(newState);
+                    localStorage.setItem('auto_sms_enabled', newState.toString());
+                    if (newState) {
+                      setAutoWhatsAppEnabled(false);
+                      localStorage.setItem('auto_whatsapp_enabled', 'false');
+                    }
+                  }}
+                  className="transition-all active:scale-90"
+                >
+                  {autoSmsEnabled ? <ToggleRight className="text-indigo-600" size={32} /> : <ToggleLeft className="text-slate-300" size={32} />}
+                </button>
               </div>
-              <button 
-                onClick={() => {
-                  const newState = !autoSmsEnabled;
-                  setAutoSmsEnabled(newState);
-                  localStorage.setItem('auto_sms_enabled', newState.toString());
-                }}
-                className="transition-all active:scale-90"
-              >
-                {autoSmsEnabled ? <ToggleRight className="text-emerald-500" size={32} /> : <ToggleLeft className="text-slate-300" size={32} />}
-              </button>
+
+              <div className="bg-emerald-50 p-4 rounded-2xl flex flex-col items-center justify-center border border-emerald-100 gap-2">
+                <div className="flex items-center gap-2">
+                  <Share2 size={16} className="text-emerald-600" />
+                  <span className="text-[10px] font-black text-slate-700">واتس‌اپ خودکار</span>
+                </div>
+                <button 
+                  onClick={() => {
+                    const newState = !autoWhatsAppEnabled;
+                    setAutoWhatsAppEnabled(newState);
+                    localStorage.setItem('auto_whatsapp_enabled', newState.toString());
+                    if (newState) {
+                      setAutoSmsEnabled(false);
+                      localStorage.setItem('auto_sms_enabled', 'false');
+                    }
+                  }}
+                  className="transition-all active:scale-90"
+                >
+                  {autoWhatsAppEnabled ? <ToggleRight className="text-emerald-600" size={32} /> : <ToggleLeft className="text-slate-300" size={32} />}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -1259,7 +1301,7 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
                 { s: OrderStatus.PENDING, label: 'در انتظار دوخت', icon: <Clock size={18} />, color: 'text-slate-500 bg-slate-50' },
                 { s: OrderStatus.PROCESSING, label: 'در حال دوخت', icon: <ScissorsIcon size={18} />, color: 'text-blue-600 bg-blue-50' },
                 { s: OrderStatus.SEWN, label: 'دوخته شده', icon: <CheckCircle size={18} />, color: 'text-indigo-600 bg-indigo-50' },
-                { s: OrderStatus.READY, label: 'آماده تحویل (پیامک)', icon: <Gift size={18} />, color: 'text-amber-600 bg-amber-50' },
+                { s: OrderStatus.READY, label: 'آماده تحویل (اطلاع‌رسانی)', icon: <Gift size={18} />, color: 'text-amber-600 bg-amber-50' },
                 { s: OrderStatus.COMPLETED, label: 'تحویل داده شد', icon: <Handshake size={18} />, color: 'text-emerald-600 bg-emerald-50' },
               ].map(item => (
                 <button 
@@ -1353,13 +1395,13 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
                   <div className="flex bg-slate-50 p-1 rounded-2xl gap-1 border border-slate-100">
                     <button 
                       onClick={() => setActiveFieldsSubTab('RENAME')}
-                      className={`flex-1 py-2.5 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-2 ${activeFieldsSubTab === 'RENAME' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-200'}`}
+                      className={`flex-1 py-2.5 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-2 ${activeFieldsSubTab === 'RENAME' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-white/50'}`}
                     >
                       <Type size={14} /> تغییر نام فیلدها
                     </button>
                     <button 
                       onClick={() => setActiveFieldsSubTab('CREATE')}
-                      className={`flex-1 py-2.5 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-2 ${activeFieldsSubTab === 'CREATE' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-200'}`}
+                      className={`flex-1 py-2.5 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-2 ${activeFieldsSubTab === 'CREATE' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-white/50'}`}
                     >
                       <PlusCircle size={14} /> ایجاد فیلد جدید
                     </button>
