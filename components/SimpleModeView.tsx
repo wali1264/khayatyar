@@ -383,7 +383,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     StorageService.saveSimpleLabels(newLabels);
   };
 
-  // --- موتور چاپ نسخه ۴ (Silent Background Injection) ---
+  // --- موتور چاپ نسخه ۵ (Silent Background Injection - حل نهایی مشکل اسکرین‌شات) ---
   const handlePrint = (order: Order, customer: Customer) => {
     const debt = getOrderDebt(order.id);
     const styleRows = Object.entries(order.styleDetails || {})
@@ -425,7 +425,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
           .field { display: flex; justify-content: space-between; font-size: 11pt; padding: 4pt 0; border-bottom: 0.5pt dotted #ddd; }
           .field-label { color: #555; }
           .field-value { font-weight: 700; }
-          .summary-box { padding-top: 15pt; margin-top: 20pt; }
+          .summary-box { padding-top: 15pt; margin-top: 20pt; border-top: none; }
           .total-line { display: flex; justify-content: space-between; font-size: 18pt; font-weight: 900; margin-top: 10pt; }
           .debt-line { display: flex; justify-content: space-between; font-size: 14pt; font-weight: 900; color: #d32f2f; margin-top: 8pt; }
           .settled { text-align: center; color: #2e7d32; font-weight: 900; font-size: 13pt; border: 2pt solid #2e7d32; padding: 10pt; border-radius: 8pt; margin-top: 15pt; }
@@ -456,24 +456,16 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
           </div>
           <div class="footer">از اعتماد شما سپاسگزارم</div>
         </div>
-        <script>
-          window.onload = () => {
-            setTimeout(() => {
-              window.focus();
-              window.print();
-              setTimeout(() => window.parent.postMessage('CLOSE_PRINT', '*'), 1000);
-            }, 500);
-          };
-        </script>
       </body>
       </html>
     `;
 
+    // ایجاد Iframe پنهان برای رندرینگ پس‌زمینه
     const printFrame = document.createElement('iframe');
     Object.assign(printFrame.style, {
       position: 'fixed',
-      right: '-5000px',
-      bottom: '-5000px',
+      right: '-9000px',
+      bottom: '-9000px',
       width: '210mm',
       height: '100mm',
       border: '0',
@@ -481,23 +473,27 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     });
     document.body.appendChild(printFrame);
 
-    const onMessage = (e: MessageEvent) => {
-      if (e.data === 'CLOSE_PRINT') {
-        if (document.body.contains(printFrame)) {
-          document.body.removeChild(printFrame);
-        }
-        window.removeEventListener('message', onMessage);
-        setShowInvoiceOptions(null);
-      }
-    };
-    window.addEventListener('message', onMessage);
-
     const doc = printFrame.contentWindow?.document;
     if (doc) {
       doc.open();
       doc.write(htmlContent);
       doc.close();
-      printFrame.contentWindow?.focus();
+
+      // راهکار قطعی: وقفه ۸۰۰ میلی‌ثانیه‌ای برای اطمینان از رندرینگ کامل در موبایل
+      setTimeout(() => {
+        if (printFrame.contentWindow) {
+          printFrame.contentWindow.focus(); // تمرکز اجباری
+          printFrame.contentWindow.print(); // صدور فرمان چاپ مستقیم روی پنجره فرزند
+          
+          // پاکسازی پس از اتمام فرآیند
+          setTimeout(() => {
+            if (document.body.contains(printFrame)) {
+              document.body.removeChild(printFrame);
+            }
+            setShowInvoiceOptions(null);
+          }, 1500);
+        }
+      }, 800);
     }
   };
 
@@ -888,7 +884,6 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
                  <span className="font-black text-lg w-8 text-center">{reminderThreshold}</span>
                  <button onClick={() => {
                    const newVal = reminderThreshold + 1;
-                   setReminderThreshold(newVal);
                    setReminderThreshold(newVal);
                    localStorage.setItem('reminder_threshold', newVal.toString());
                  }} className="p-1 hover:bg-slate-50 rounded-lg text-indigo-600"><ChevronUp size={20}/></button>
