@@ -425,11 +425,11 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
           .field { display: flex; justify-content: space-between; font-size: 11pt; padding: 4pt 0; border-bottom: 0.5pt dotted #ddd; }
           .field-label { color: #555; }
           .field-value { font-weight: 700; }
-          .summary-box { border-top: 2pt solid #000; padding-top: 15pt; margin-top: 20pt; }
+          .summary-box { padding-top: 15pt; margin-top: 20pt; }
           .total-line { display: flex; justify-content: space-between; font-size: 18pt; font-weight: 900; margin-top: 10pt; }
           .debt-line { display: flex; justify-content: space-between; font-size: 14pt; font-weight: 900; color: #d32f2f; margin-top: 8pt; }
           .settled { text-align: center; color: #2e7d32; font-weight: 900; font-size: 13pt; border: 2pt solid #2e7d32; padding: 10pt; border-radius: 8pt; margin-top: 15pt; }
-          .footer { text-align: center; font-size: 9pt; color: #777; margin-top: 40pt; border-top: 1pt solid #eee; padding-top: 15pt; }
+          .footer { text-align: center; font-size: 11pt; color: #000; margin-top: 40pt; border-top: 1pt solid #eee; padding-top: 15pt; font-weight: 700; }
         </style>
       </head>
       <body>
@@ -454,7 +454,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
             <div class="total-line"><span>جمع کل:</span><span>${(order.totalPrice || 0).toLocaleString()} افغانی</span></div>
             ${debt > 0.1 ? `<div class="debt-line"><span>مانده حساب:</span> <span>${debt.toLocaleString()}</span></div>` : `<div class="settled">تسویه کامل</div>`}
           </div>
-          <div class="footer">طراحی توسط اپلیکیشن خیاطیار</div>
+          <div class="footer">از اعتماد شما سپاسگزارم</div>
         </div>
         <script>
           window.onload = () => {
@@ -469,8 +469,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
       </html>
     `;
 
-    // ایجاد Iframe پنهان برای هر دو محیط موبایل و دسکتاپ
-    // این کار باعث حذف تب about:blank و محوشدگی لحظه‌ای می‌شود
     const printFrame = document.createElement('iframe');
     Object.assign(printFrame.style, {
       position: 'fixed',
@@ -499,7 +497,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
       doc.open();
       doc.write(htmlContent);
       doc.close();
-      // تمرکز اجباری برای موبایل جهت جلوگیری از چاپ اسکرین‌شات
       printFrame.contentWindow?.focus();
     }
   };
@@ -848,7 +845,7 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
                   className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 active:scale-95 transition-all"
                 >
                   <Printer size={20} />
-                  چاپ فاکتور هوشمند
+                  چاپ فاکتور
                 </button>
              </div>
 
@@ -891,6 +888,7 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
                  <span className="font-black text-lg w-8 text-center">{reminderThreshold}</span>
                  <button onClick={() => {
                    const newVal = reminderThreshold + 1;
+                   setReminderThreshold(newVal);
                    setReminderThreshold(newVal);
                    localStorage.setItem('reminder_threshold', newVal.toString());
                  }} className="p-1 hover:bg-slate-50 rounded-lg text-indigo-600"><ChevronUp size={20}/></button>
