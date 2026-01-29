@@ -383,9 +383,8 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     StorageService.saveSimpleLabels(newLabels);
   };
 
-  // --- موتور چاپ دوگانه حرفه‌ای (Dual-Engine Printing Core) ---
+  // --- موتور چاپ نسخه ۳ (Universal Fluid Print) ---
   const handlePrint = (order: Order, customer: Customer) => {
-    // ۱. تشخیص دقیق محیط (موبایل یا دسکتاپ)
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     const debt = getOrderDebt(order.id);
@@ -396,121 +395,135 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
           <span class="field-value">${value}</span>
         </div>` : '').join('');
 
-    // ۲. تولید محتوای HTML با استانداردهای فیزیکی (PT و MM)
     const htmlContent = `
       <!DOCTYPE html>
       <html dir="rtl" lang="fa">
       <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap" rel="stylesheet">
         <style>
-          * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
-          body { 
+          /* ریست برای تمام انواع کاغذها */
+          * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          html, body { 
             margin: 0; padding: 0; background: #fff; color: #000;
             font-family: 'Vazirmatn', sans-serif;
-            width: 80mm;
+            width: 100%;
           }
-          @page { size: 80mm auto; margin: 0; }
-          .invoice { padding: 10mm 5mm; width: 80mm; margin: 0 auto; border: 1px solid #eee; }
-          .header { text-align: center; border-bottom: 2pt solid #000; padding-bottom: 10pt; margin-bottom: 15pt; }
-          .shop-name { font-size: 20pt; font-weight: 900; margin: 0; }
-          .shop-sub { font-size: 10pt; font-weight: 700; margin-top: 5pt; }
-          .section { margin-bottom: 15pt; }
-          .row { display: flex; justify-content: space-between; margin-bottom: 5pt; font-size: 11pt; }
-          .title { font-size: 12pt; font-weight: 900; border-bottom: 1pt solid #ddd; padding-bottom: 3pt; margin-bottom: 8pt; }
-          .field { display: flex; justify-content: space-between; font-size: 10pt; padding: 3pt 0; border-bottom: 0.5pt dotted #eee; }
+          
+          /* تنظیمات انطباق‌پذیر با کاغذ */
+          @page { margin: 5mm; size: auto; }
+          
+          /* کانتینر فاکتور: در دسکتاپ/A4 محدود و در رول/موبایل تمام عرض */
+          .invoice-wrapper {
+            max-width: 210mm; /* حداکثر عرض A4 برای زیبایی در دسکتاپ */
+            margin: 0 auto;
+            padding: 10mm;
+            border: 1px solid #f0f0f0;
+          }
+
+          @media print {
+            .invoice-wrapper { 
+              max-width: none; 
+              width: 100%; 
+              padding: 5mm; 
+              border: none;
+            }
+            .no-print { display: none !important; }
+          }
+
+          .header { text-align: center; border-bottom: 2pt solid #000; padding-bottom: 15pt; margin-bottom: 20pt; }
+          .shop-name { font-size: 24pt; font-weight: 900; margin: 0; }
+          .shop-sub { font-size: 11pt; font-weight: 700; margin-top: 6pt; color: #333; }
+          
+          .section { margin-bottom: 20pt; }
+          .title { font-size: 14pt; font-weight: 900; border-bottom: 1pt solid #000; padding-bottom: 4pt; margin-bottom: 10pt; background: #f9f9f9; padding-right: 5pt; }
+          
+          .grid-row { display: flex; justify-content: space-between; margin-bottom: 8pt; font-size: 12pt; }
+          .field { display: flex; justify-content: space-between; font-size: 11pt; padding: 4pt 0; border-bottom: 0.5pt dotted #ddd; }
           .field-label { color: #555; }
           .field-value { font-weight: 700; }
-          .total-box { border-top: 2pt solid #000; padding-top: 10pt; margin-top: 10pt; }
-          .grand-total { display: flex; justify-content: space-between; font-size: 15pt; font-weight: 900; background: #f9f9f9; padding: 5pt; }
-          .debt-info { display: flex; justify-content: space-between; font-size: 13pt; font-weight: 900; color: #d32f2f; margin-top: 5pt; }
-          .settled { text-align: center; color: #2e7d32; font-weight: 900; font-size: 12pt; border: 1.5pt solid #2e7d32; padding: 5pt; border-radius: 5pt; margin-top: 10pt; }
-          .footer { text-align: center; font-size: 8pt; color: #888; margin-top: 30pt; border-top: 1pt solid #eee; padding-top: 10pt; }
-          /* دکمه چاپ مخصوص موبایل که در زمان چاپ مخفی است */
-          .mobile-print-btn { 
-            display: none; width: 100%; padding: 15pt; background: #4f46e5; color: #fff; 
-            border: none; border-radius: 10pt; font-size: 14pt; font-weight: bold; margin-bottom: 20pt;
-          }
-          @media screen { 
-            body { background: #f0f2f5; display: flex; justify-content: center; padding: 20pt; }
-            .invoice { background: #fff; box-shadow: 0 5pt 15pt rgba(0,0,0,0.1); }
-            ${isMobile ? '.mobile-print-btn { display: block; }' : ''}
-          }
+          
+          .summary-box { border-top: 2pt solid #000; padding-top: 15pt; margin-top: 20pt; }
+          .total-line { display: flex; justify-content: space-between; font-size: 18pt; font-weight: 900; margin-top: 10pt; }
+          .debt-line { display: flex; justify-content: space-between; font-size: 14pt; font-weight: 900; color: #d32f2f; margin-top: 8pt; }
+          .settled { text-align: center; color: #2e7d32; font-weight: 900; font-size: 13pt; border: 2pt solid #2e7d32; padding: 10pt; border-radius: 8pt; margin-top: 15pt; }
+          
+          .footer { text-align: center; font-size: 9pt; color: #777; margin-top: 40pt; border-top: 1pt solid #eee; padding-top: 15pt; font-style: italic; }
         </style>
       </head>
       <body>
-        <div class="invoice">
-          <button class="mobile-print-btn" onclick="window.print()">تایید و چاپ فاکتور</button>
-          
+        <div class="invoice-wrapper">
           <div class="header">
             <div class="shop-name">${shopInfo.name || 'خیاطیار'}</div>
             ${shopInfo.tailorName ? `<div class="shop-sub">مدیریت: ${shopInfo.tailorName}</div>` : ''}
             ${shopInfo.phone ? `<div class="shop-sub" dir="ltr">${shopInfo.phone}</div>` : ''}
-            ${shopInfo.address ? `<div style="font-size: 8pt; margin-top: 5pt;">${shopInfo.address}</div>` : ''}
+            ${shopInfo.address ? `<div style="font-size: 9pt; margin-top: 6pt; color:#666;">${shopInfo.address}</div>` : ''}
           </div>
 
           <div class="section">
-            <div class="row"><b>مشتری:</b> <span>${customer.name}</span></div>
-            <div class="row"><b>تاریخ:</b> <span>${order.dateCreated}</span></div>
+            <div class="grid-row"><span><b>نام مشتری:</b> ${customer.name}</span> <span dir="ltr"><b>کد:</b> ${customer.code}</span></div>
+            <div class="grid-row"><span><b>تاریخ سفارش:</b> ${order.dateCreated}</span></div>
           </div>
 
           <div class="section">
-            <div class="title">شرح سفارش: ${order.description}</div>
+            <div class="title">جزئیات سفارش: ${order.description}</div>
             <div class="style-fields">${styleRows}</div>
           </div>
 
-          <div class="total-box">
-            <div class="row"><span>قیمت پارچه:</span> <span>${(order.clothPrice || 0).toLocaleString()}</span></div>
-            <div class="row"><span>اجرت دوخت:</span> <span>${(order.sewingFee || 0).toLocaleString()}</span></div>
-            <div class="grand-total">
+          <div class="summary-box">
+            <div class="grid-row"><span>قیمت پارچه:</span> <span>${(order.clothPrice || 0).toLocaleString()}</span></div>
+            <div class="grid-row"><span>اجرت دوخت:</span> <span>${(order.sewingFee || 0).toLocaleString()}</span></div>
+            <div class="total-line">
               <span>جمع کل:</span>
-              <span>${(order.totalPrice || 0).toLocaleString()} <small>افغانی</small></span>
+              <span>${(order.totalPrice || 0).toLocaleString()} <small style="font-size:10pt;">افغانی</small></span>
             </div>
             ${debt > 0.1 
-              ? `<div class="debt-info"><span>مانده حساب:</span> <span>${debt.toLocaleString()}</span></div>` 
-              : `<div class="settled">تصفیه کامل</div>`}
+              ? `<div class="debt-line"><span>مانده حساب:</span> <span>${debt.toLocaleString()} افغانی</span></div>` 
+              : `<div class="settled">حساب این فاکتور تسویه می‌باشد</div>`}
           </div>
 
-          <div class="footer">از اعتماد شما متشکریم - اپلیکیشن خیاطیار</div>
+          <div class="footer">قدردان اعتماد شما هستیم.</div>
         </div>
 
         <script>
           window.onload = () => {
+            // تاخیر اندک برای اطمینان از رندر شدن استایل‌ها و فونت‌ها
             setTimeout(() => {
+              window.print();
+              // در موبایل تب را بلافاصله بعد از چاپ نمی‌بندیم تا کاربر فرصت کار با دیالوگ را داشته باشد
               if (!${isMobile}) {
-                window.print();
-                setTimeout(() => window.parent.postMessage('FINISH', '*'), 1000);
+                setTimeout(() => window.parent.postMessage('PRINT_DONE', '*'), 1500);
               }
-            }, 500);
+            }, 600);
           };
         </script>
       </body>
       </html>
     `;
 
-    // ۳. اجرای استراتژی بر اساس دستگاه
     if (isMobile) {
-      // استراتژی تب جدید برای موبایل (Isolated Tab Engine)
+      // در موبایل مستقیماً یک تب جدید با محتوای فاکتور باز می‌کنیم
+      // این کار از ایجاد اسکرین‌شات جلوگیری کرده و پنجره چاپ استاندارد را باز می‌کند
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.write(htmlContent);
         printWindow.document.close();
         setShowInvoiceOptions(null);
       } else {
-        alert('لطفاً اجازه باز شدن پنجره (Pop-up) را بدهید.');
+        alert('لطفاً اجازه باز شدن پنجره‌های Pop-up را در تنظیمات مرورگر خود بدهید.');
       }
     } else {
-      // استراتژی Iframe برای دسکتاپ (Precision Iframe Engine)
+      // در دسکتاپ از همان Iframe پنهان استفاده می‌کنیم که بهترین تجربه کاربری را دارد
       const printFrame = document.createElement('iframe');
       Object.assign(printFrame.style, {
-        position: 'fixed', right: '-3000px', bottom: '-3000px',
-        width: '80mm', height: '100mm'
+        position: 'fixed', right: '-5000px', bottom: '-5000px', width: '210mm', height: '100mm'
       });
       document.body.appendChild(printFrame);
 
       const onMessage = (e: MessageEvent) => {
-        if (e.data === 'FINISH') {
-          document.body.removeChild(printFrame);
+        if (e.data === 'PRINT_DONE') {
+          if (document.body.contains(printFrame)) document.body.removeChild(printFrame);
           window.removeEventListener('message', onMessage);
           setShowInvoiceOptions(null);
         }
@@ -870,7 +883,7 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
                   className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 active:scale-95 transition-all"
                 >
                   <Printer size={20} />
-                  چاپ فاکتور حرارتی
+                  چاپ فاکتور هوشمند
                 </button>
              </div>
 
@@ -884,7 +897,6 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
         </div>
       )}
 
-      {/* بقیه مدال‌ها بدون تغییر باقی می‌مانند */}
       {showRemindersModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-end sm:items-center justify-center no-print">
           <div className="absolute inset-0" onClick={() => setShowRemindersModal(false)} />
