@@ -392,26 +392,21 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   const handlePrint = (order: Order, customer: Customer) => {
     setPrintingOrder({ order, customer });
     
-    // بهبود مدیریت رویداد چاپ برای موبایل
-    const handleAfterPrint = () => {
+    // پاکسازی هوشمند بعد از اتمام چاپ یا انصراف
+    const finalizePrint = () => {
       setPrintingOrder(null);
       setShowInvoiceOptions(null);
-      window.removeEventListener('afterprint', handleAfterPrint);
+      window.removeEventListener('afterprint', finalizePrint);
+      window.removeEventListener('focus', finalizePrint);
     };
 
-    window.addEventListener('afterprint', handleAfterPrint);
+    window.addEventListener('afterprint', finalizePrint);
+    window.addEventListener('focus', finalizePrint, { once: true }); // سیگنال بازگشت به برنامه در موبایل
 
-    // تاخیر ۵۰۰ میلی‌ثانیه‌ای برای اطمینان از رندر کامل استایل‌ها در موبایل
+    // افزایش زمان انتظار به ۱۰۰۰ میلی‌ثانیه برای رندر کامل استایل‌ها و فونت در موبایل
     setTimeout(() => {
       window.print();
-      // برای مرورگرهایی که afterprint را پشتیبانی نمی‌کنند
-      setTimeout(() => {
-        if (printingOrder) {
-          setPrintingOrder(null);
-          setShowInvoiceOptions(null);
-        }
-      }, 2000);
-    }, 500);
+    }, 1000);
   };
 
   const handleWhatsAppShare = (order: Order, customer: Customer) => {
@@ -439,33 +434,27 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
     <div className="min-h-screen bg-slate-50 flex flex-col font-['Vazirmatn'] select-none">
       <style>{`
         @media print {
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            height: auto !important;
-            background: white !important;
-            visibility: hidden !important; /* مخفی سازی هوشمند برای جلوگیری از صفحه سفید موبایل */
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          #root, main, header, .no-print, [role="dialog"], .fixed {
-            display: none !important;
+          body * {
             visibility: hidden !important;
           }
-          .print-section {
+          .print-section, .print-section * {
             visibility: visible !important;
+          }
+          .print-section {
             display: block !important;
-            position: absolute !important;
+            position: fixed !important; /* پوزیشن فیکس برای جلوگیری از لغزش در موبایل */
             left: 0 !important;
             top: 0 !important;
             width: 80mm !important;
-            margin: 0 auto !important;
+            margin: 0 !important;
             padding: 8mm !important;
             background: white !important;
             box-sizing: border-box !important;
-            direction: rtl !important;
-            font-family: 'Vazirmatn', sans-serif !important;
-            color: black !important;
+            z-index: 9999 !important;
+          }
+          /* پنهان سازی قطعی المان‌های مزاحم بدون از کار انداختن ریشه */
+          header, main, .no-print, [role="dialog"], .fixed, button {
+            display: none !important;
           }
           @page {
             size: 80mm auto;
