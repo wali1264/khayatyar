@@ -386,92 +386,140 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     StorageService.saveSimpleLabels(newLabels);
   };
 
+  // --- سیستم چاپ مهندسی شده جدید (Strict Isolation Bridge) ---
   const handlePrint = (order: Order, customer: Customer) => {
-    // ایجاد Iframe پنهان برای چاپ ایزوله (بهترین راهکار برای موبایل)
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // ۱. ایجاد پل ارتباطی (Iframe) با ایزولاسیون کامل
     const printFrame = document.createElement('iframe');
-    printFrame.style.visibility = 'hidden';
-    printFrame.style.position = 'fixed';
-    printFrame.style.right = '0';
-    printFrame.style.bottom = '0';
-    printFrame.style.width = '0';
-    printFrame.style.height = '0';
-    printFrame.style.border = '0';
+    
+    // تنظیمات استایل Iframe برای جلوگیری از هرگونه تداخل بصری با برنامه اصلی
+    Object.assign(printFrame.style, {
+      position: 'fixed',
+      right: '-1000px',
+      bottom: '-1000px',
+      width: '80mm',
+      height: '100px',
+      border: '0',
+      visibility: 'hidden',
+      zIndex: '-1'
+    });
+
     document.body.appendChild(printFrame);
 
     const debt = getOrderDebt(order.id);
     const styleRows = Object.entries(order.styleDetails || {})
       .map(([key, value]) => value ? `
-        <div style="display:flex; justify-content:space-between; font-size:9pt; border-bottom:1px dotted #eee; padding-bottom:4px; margin-bottom:4px;">
-          <span style="color:#666;">${measurementLabels[key] || key}:</span>
-          <span style="font-weight:900;">${value}</span>
+        <div class="style-item">
+          <span class="style-label">${measurementLabels[key] || key}:</span>
+          <span class="style-value">${value}</span>
         </div>` : '').join('');
 
+    // ۲. تزریق محتوای خالص فاکتور با استانداردهای POS
     const htmlContent = `
       <!DOCTYPE html>
-      <html dir="rtl">
+      <html dir="rtl" lang="fa">
       <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap" rel="stylesheet">
         <style>
-          body {
+          /* ریست کلی برای پرینترهای حرارتی */
+          * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+          html, body { 
+            margin: 0; 
+            padding: 0; 
+            background: #fff; 
+            color: #000;
             font-family: 'Vazirmatn', sans-serif;
             width: 80mm;
-            margin: 0;
-            padding: 8mm;
-            background: #fff;
-            color: #000;
           }
-          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 15px; }
-          .shop-name { font-size: 18pt; font-weight: 900; margin: 0; }
-          .info-text { font-size: 10pt; font-weight: 700; margin-top: 3px; }
-          .address { font-size: 8pt; color: #444; margin-top: 5px; }
-          .section { margin-bottom: 15px; }
-          .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
-          .label { font-size: 11pt; font-weight: 700; }
+          body { padding: 5mm; }
+          
+          /* استایل‌های چاپی دسکتاپ برای جلوگیری از جابجایی */
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+
+          .container { width: 100%; }
+          .header { text-align: center; border-bottom: 2pt solid #000; padding-bottom: 10pt; margin-bottom: 12pt; }
+          .shop-title { font-size: 18pt; font-weight: 900; margin: 0; line-height: 1.2; }
+          .tailor-info { font-size: 10pt; font-weight: 700; margin-top: 4pt; }
+          .contact-info { font-size: 10pt; margin-top: 2pt; direction: ltr; }
+          .address-info { font-size: 8pt; color: #333; margin-top: 4pt; line-height: 1.4; }
+
+          .customer-box { margin-bottom: 12pt; border-bottom: 1px dashed #ccc; padding-bottom: 8pt; }
+          .row { display: flex; justify-content: space-between; margin-bottom: 4pt; align-items: center; }
+          .label { font-size: 11pt; font-weight: 400; }
           .value { font-size: 11pt; font-weight: 900; }
-          .title { font-size: 11pt; font-weight: 900; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px; }
-          .total-section { border-top: 2px solid #000; padding-top: 10px; }
-          .grand-total { display: flex; justify-content: space-between; font-size: 13pt; font-weight: 900; border-top: 1px solid #ccc; padding-top: 8px; margin-top: 5px; }
-          .debt { color: #be123c; font-size: 12pt; font-weight: 900; display: flex; justify-content: space-between; margin-top: 5px; }
-          .settled { text-align: center; color: #047857; font-weight: 900; font-size: 11pt; background: #f0fdf4; border: 1px solid #dcfce7; border-radius: 8px; padding: 6px; margin-top: 10px; }
-          .footer { text-align: center; font-size: 8pt; color: #888; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px; }
+
+          .order-title { font-size: 12pt; font-weight: 900; border-bottom: 1px solid #000; padding-bottom: 4pt; margin-bottom: 8pt; }
+          
+          .style-list { margin-bottom: 12pt; }
+          .style-item { display: flex; justify-content: space-between; font-size: 9pt; border-bottom: 1px dotted #eee; padding: 3pt 0; }
+          .style-label { color: #555; }
+          .style-value { font-weight: 700; }
+
+          .price-summary { border-top: 1.5pt solid #000; padding-top: 8pt; margin-top: 5pt; }
+          .total-row { display: flex; justify-content: space-between; font-size: 14pt; font-weight: 900; border-top: 1px solid #ddd; padding-top: 6pt; margin-top: 4pt; }
+          .debt-row { color: #d00; display: flex; justify-content: space-between; font-size: 12pt; font-weight: 900; margin-top: 4pt; }
+          .settled-msg { text-align: center; font-weight: 900; font-size: 11pt; background: #f8f8f8; border: 1px solid #eee; border-radius: 4pt; padding: 6pt; margin-top: 8pt; color: #060; }
+
+          .footer { text-align: center; font-size: 8pt; color: #777; margin-top: 25pt; border-top: 1px solid #eee; padding-top: 8pt; font-style: italic; }
         </style>
       </head>
       <body>
-        <div class="header">
-          <div class="shop-name">${shopInfo.name || 'خیاطیار'}</div>
-          ${shopInfo.tailorName ? `<div class="info-text">استاد: ${shopInfo.tailorName}</div>` : ''}
-          ${shopInfo.phone ? `<div class="info-text" dir="ltr">${shopInfo.phone}</div>` : ''}
-          ${shopInfo.address ? `<div class="address">${shopInfo.address}</div>` : ''}
-        </div>
+        <div class="container">
+          <div class="header">
+            <h1 class="shop-title">${shopInfo.name || 'خیاطیار'}</h1>
+            ${shopInfo.tailorName ? `<div class="tailor-info">مدیریت: ${shopInfo.tailorName}</div>` : ''}
+            ${shopInfo.phone ? `<div class="contact-info">${shopInfo.phone}</div>` : ''}
+            ${shopInfo.address ? `<div class="address-info">${shopInfo.address}</div>` : ''}
+          </div>
 
-        <div class="section">
-          <div class="row"><span class="label">مشتری:</span><span class="value">${customer.name}</span></div>
-          <div class="row" style="font-size:10pt; color:#444;"><span>تاریخ:</span><span style="font-weight:700;">${order.dateCreated}</span></div>
-        </div>
+          <div class="customer-box">
+            <div class="row">
+              <span class="label">نام مشتری:</span>
+              <span class="value">${customer.name}</span>
+            </div>
+            <div class="row" style="opacity: 0.7; font-size: 9pt;">
+              <span>تاریخ تنظیم فاکتور:</span>
+              <span>${order.dateCreated}</span>
+            </div>
+          </div>
 
-        <div class="section">
-          <div class="title">شرح: ${order.description}</div>
-          ${styleRows}
-        </div>
+          <div class="order-title">شرح سفارش: ${order.description}</div>
+          
+          <div class="style-list">
+            ${styleRows || '<div style="text-align:center; font-size:8pt; color:#999;">جزئیات مدل ثبت نشده است</div>'}
+          </div>
 
-        <div class="total-section">
-          <div class="row" style="font-size:10pt;"><span>قیمت پارچه:</span><span>${(order.clothPrice || 0).toLocaleString()}</span></div>
-          <div class="row" style="font-size:10pt;"><span>اجرت دوخت:</span><span>${(order.sewingFee || 0).toLocaleString()}</span></div>
-          <div class="grand-total"><span>جمع کل:</span><span>${(order.totalPrice || 0).toLocaleString()} افغانی</span></div>
-          ${debt > 0.1 
-            ? `<div class="debt"><span>بدهکاری:</span><span>${debt.toLocaleString()}</span></div>` 
-            : `<div class="settled">تصفیه کامل</div>`}
-        </div>
+          <div class="price-summary">
+            <div class="row"><span class="label">قیمت پارچه:</span><span class="value">${(order.clothPrice || 0).toLocaleString()}</span></div>
+            <div class="row"><span class="label">اجرت دوخت:</span><span class="value">${(order.sewingFee || 0).toLocaleString()}</span></div>
+            <div class="total-row">
+              <span>جمع کل:</span>
+              <span>${(order.totalPrice || 0).toLocaleString()} <small style="font-size:8pt;">افغانی</small></span>
+            </div>
+            ${debt > 0.1 
+              ? `<div class="debt-row"><span>مانده حساب (بدهی):</span><span>${debt.toLocaleString()}</span></div>` 
+              : `<div class="settled-msg">حساب این فاکتور کاملاً تسویه شده است</div>`}
+          </div>
 
-        <div class="footer">از انتخاب شما سپاسگزاریم</div>
+          <div class="footer">طراحی و مدیریت توسط اپلیکیشن خیاطیار</div>
+        </div>
 
         <script>
+          // سیستم هوشمند رندرینگ و پاکسازی
           window.onload = () => {
+            // انتظار برای اطمینان از بارگذاری کامل فونت‌های فارسی در موبایل
             setTimeout(() => {
+              window.focus();
               window.print();
-              window.parent.postMessage('print_finished', '*');
-            }, 1000);
+              // ارسال سیگنال اتمام به برنامه اصلی
+              window.parent.postMessage('FINISH_PRINT', '*');
+            }, ${isMobile ? 1200 : 500});
           };
         </script>
       </body>
@@ -485,28 +533,29 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
       doc.close();
     }
 
-    const messageHandler = (event: MessageEvent) => {
-      if (event.data === 'print_finished') {
-        setTimeout(() => {
-          if (document.body.contains(printFrame)) {
-            document.body.removeChild(printFrame);
-          }
-          setShowInvoiceOptions(null);
-          window.removeEventListener('message', messageHandler);
-        }, 500);
+    // ۳. مدیریت چرخه حیات چاپ و پاکسازی منابع
+    const cleanup = () => {
+      if (document.body.contains(printFrame)) {
+        document.body.removeChild(printFrame);
+      }
+      setShowInvoiceOptions(null);
+      window.removeEventListener('message', onMessage);
+    };
+
+    const onMessage = (event: MessageEvent) => {
+      if (event.data === 'FINISH_PRINT') {
+        cleanup();
       }
     };
-    window.addEventListener('message', messageHandler);
 
+    window.addEventListener('message', onMessage);
+
+    // راهکار پشتیبان برای زمانی که پنجره چاپ در برخی مرورگرها سیگنال نمی‌فرستد
     window.addEventListener('focus', () => {
-      setTimeout(() => {
-        if (document.body.contains(printFrame)) {
-          document.body.removeChild(printFrame);
-          setShowInvoiceOptions(null);
-        }
-      }, 1000);
+      setTimeout(cleanup, 1500);
     }, { once: true });
   };
+  // --- پایان سیستم چاپ جدید ---
 
   const handleWhatsAppShare = (order: Order, customer: Customer) => {
     const debt = getOrderDebt(order.id);
