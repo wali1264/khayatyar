@@ -89,9 +89,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   const [activeFieldsSubTab, setActiveFieldsSubTab] = useState<'RENAME' | 'CREATE'>('RENAME');
   const [newFieldName, setNewFieldName] = useState('');
   
-  // Printing State
-  const [printingOrder, setPrintingOrder] = useState<{order: Order, customer: Customer} | null>(null);
-
   // Quick Order Local State
   const [quickOrderPrices, setQuickOrderPrices] = useState({ cloth: 0, sewing: 0, received: 0 });
   const [styleDetails, setStyleDetails] = useState<Record<string, string>>({});
@@ -390,23 +387,125 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   };
 
   const handlePrint = (order: Order, customer: Customer) => {
-    setPrintingOrder({ order, customer });
-    
-    // پاکسازی هوشمند بعد از اتمام چاپ یا انصراف
-    const finalizePrint = () => {
-      setPrintingOrder(null);
-      setShowInvoiceOptions(null);
-      window.removeEventListener('afterprint', finalizePrint);
-      window.removeEventListener('focus', finalizePrint);
+    // ایجاد Iframe پنهان برای چاپ ایزوله (بهترین راهکار برای موبایل)
+    const printFrame = document.createElement('iframe');
+    printFrame.style.visibility = 'hidden';
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = '0';
+    document.body.appendChild(printFrame);
+
+    const debt = getOrderDebt(order.id);
+    const styleRows = Object.entries(order.styleDetails || {})
+      .map(([key, value]) => value ? `
+        <div style="display:flex; justify-content:space-between; font-size:9pt; border-bottom:1px dotted #eee; padding-bottom:4px; margin-bottom:4px;">
+          <span style="color:#666;">${measurementLabels[key] || key}:</span>
+          <span style="font-weight:900;">${value}</span>
+        </div>` : '').join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html dir="rtl">
+      <head>
+        <meta charset="UTF-8">
+        <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap" rel="stylesheet">
+        <style>
+          body {
+            font-family: 'Vazirmatn', sans-serif;
+            width: 80mm;
+            margin: 0;
+            padding: 8mm;
+            background: #fff;
+            color: #000;
+          }
+          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 15px; }
+          .shop-name { font-size: 18pt; font-weight: 900; margin: 0; }
+          .info-text { font-size: 10pt; font-weight: 700; margin-top: 3px; }
+          .address { font-size: 8pt; color: #444; margin-top: 5px; }
+          .section { margin-bottom: 15px; }
+          .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+          .label { font-size: 11pt; font-weight: 700; }
+          .value { font-size: 11pt; font-weight: 900; }
+          .title { font-size: 11pt; font-weight: 900; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px; }
+          .total-section { border-top: 2px solid #000; padding-top: 10px; }
+          .grand-total { display: flex; justify-content: space-between; font-size: 13pt; font-weight: 900; border-top: 1px solid #ccc; padding-top: 8px; margin-top: 5px; }
+          .debt { color: #be123c; font-size: 12pt; font-weight: 900; display: flex; justify-content: space-between; margin-top: 5px; }
+          .settled { text-align: center; color: #047857; font-weight: 900; font-size: 11pt; background: #f0fdf4; border: 1px solid #dcfce7; border-radius: 8px; padding: 6px; margin-top: 10px; }
+          .footer { text-align: center; font-size: 8pt; color: #888; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="shop-name">${shopInfo.name || 'خیاطیار'}</div>
+          ${shopInfo.tailorName ? `<div class="info-text">استاد: ${shopInfo.tailorName}</div>` : ''}
+          ${shopInfo.phone ? `<div class="info-text" dir="ltr">${shopInfo.phone}</div>` : ''}
+          ${shopInfo.address ? `<div class="address">${shopInfo.address}</div>` : ''}
+        </div>
+
+        <div class="section">
+          <div class="row"><span class="label">مشتری:</span><span class="value">${customer.name}</span></div>
+          <div class="row" style="font-size:10pt; color:#444;"><span>تاریخ:</span><span style="font-weight:700;">${order.dateCreated}</span></div>
+        </div>
+
+        <div class="section">
+          <div class="title">شرح: ${order.description}</div>
+          ${styleRows}
+        </div>
+
+        <div class="total-section">
+          <div class="row" style="font-size:10pt;"><span>قیمت پارچه:</span><span>${(order.clothPrice || 0).toLocaleString()}</span></div>
+          <div class="row" style="font-size:10pt;"><span>اجرت دوخت:</span><span>${(order.sewingFee || 0).toLocaleString()}</span></div>
+          <div class="grand-total"><span>جمع کل:</span><span>${(order.totalPrice || 0).toLocaleString()} افغانی</span></div>
+          ${debt > 0.1 
+            ? `<div class="debt"><span>بدهکاری:</span><span>${debt.toLocaleString()}</span></div>` 
+            : `<div class="settled">تصفیه کامل</div>`}
+        </div>
+
+        <div class="footer">از انتخاب شما سپاسگزاریم</div>
+
+        <script>
+          window.onload = () => {
+            setTimeout(() => {
+              window.print();
+              window.parent.postMessage('print_finished', '*');
+            }, 1000);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    const doc = printFrame.contentWindow?.document;
+    if (doc) {
+      doc.open();
+      doc.write(htmlContent);
+      doc.close();
+    }
+
+    const messageHandler = (event: MessageEvent) => {
+      if (event.data === 'print_finished') {
+        setTimeout(() => {
+          if (document.body.contains(printFrame)) {
+            document.body.removeChild(printFrame);
+          }
+          setShowInvoiceOptions(null);
+          window.removeEventListener('message', messageHandler);
+        }, 500);
+      }
     };
+    window.addEventListener('message', messageHandler);
 
-    window.addEventListener('afterprint', finalizePrint);
-    window.addEventListener('focus', finalizePrint, { once: true }); // سیگنال بازگشت به برنامه در موبایل
-
-    // افزایش زمان انتظار به ۱۰۰۰ میلی‌ثانیه برای رندر کامل استایل‌ها و فونت در موبایل
-    setTimeout(() => {
-      window.print();
-    }, 1000);
+    window.addEventListener('focus', () => {
+      setTimeout(() => {
+        if (document.body.contains(printFrame)) {
+          document.body.removeChild(printFrame);
+          setShowInvoiceOptions(null);
+        }
+      }, 1000);
+    }, { once: true });
   };
 
   const handleWhatsAppShare = (order: Order, customer: Customer) => {
@@ -432,103 +531,6 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-['Vazirmatn'] select-none">
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          .print-section, .print-section * {
-            visibility: visible !important;
-          }
-          .print-section {
-            display: block !important;
-            position: fixed !important; /* پوزیشن فیکس برای جلوگیری از لغزش در موبایل */
-            left: 0 !important;
-            top: 0 !important;
-            width: 80mm !important;
-            margin: 0 !important;
-            padding: 8mm !important;
-            background: white !important;
-            box-sizing: border-box !important;
-            z-index: 9999 !important;
-          }
-          /* پنهان سازی قطعی المان‌های مزاحم بدون از کار انداختن ریشه */
-          header, main, .no-print, [role="dialog"], .fixed, button {
-            display: none !important;
-          }
-          @page {
-            size: 80mm auto;
-            margin: 0;
-          }
-        }
-      `}</style>
-
-      {/* Hidden Print Content */}
-      {printingOrder && (
-        <div className="print-section hidden print:block" dir="rtl">
-          <div className="text-center border-b-2 border-slate-950 pb-4 mb-4">
-            <h1 className="text-[18pt] font-black mb-1">{shopInfo.name || 'خیاطیار'}</h1>
-            {shopInfo.tailorName && <p className="text-[10pt] font-bold">استاد: {shopInfo.tailorName}</p>}
-            {shopInfo.phone && <p className="text-[10pt] font-bold" dir="ltr">{shopInfo.phone}</p>}
-            {shopInfo.address && <p className="text-[8pt] text-slate-700 mt-1">{shopInfo.address}</p>}
-          </div>
-
-          <div className="mb-5 space-y-2">
-            <div className="flex justify-between text-[11pt]">
-              <span className="font-bold">مشتری:</span>
-              <span className="font-black">{printingOrder.customer.name}</span>
-            </div>
-            <div className="flex justify-between text-[10pt] text-slate-800">
-              <span>تاریخ سفارش:</span>
-              <span className="font-bold">{printingOrder.order.dateCreated}</span>
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <div className="text-[11pt] font-black border-b border-slate-200 pb-2 mb-3">شرح: {printingOrder.order.description}</div>
-            <div className="grid grid-cols-1 gap-2">
-              {Object.entries(printingOrder.order.styleDetails || {}).map(([key, value]) => value && (
-                <div key={key} className="flex justify-between text-[9pt] border-b border-dotted border-slate-100 pb-1">
-                  <span className="text-slate-600">{measurementLabels[key] || key}:</span>
-                  <span className="font-black">{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="border-t-2 border-slate-950 pt-4 space-y-2">
-            <div className="flex justify-between text-[10pt]">
-              <span>قیمت پارچه:</span>
-              <span>{(printingOrder.order.clothPrice || 0).toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between text-[10pt]">
-              <span>اجرت دوخت:</span>
-              <span>{(printingOrder.order.sewingFee || 0).toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between text-[13pt] font-black pt-2 border-t border-slate-300">
-              <span>جمع کل:</span>
-              <span>{(printingOrder.order.totalPrice || 0).toLocaleString()} <span className="text-[9pt]">افغانی</span></span>
-            </div>
-            
-            {(() => {
-              const debt = getOrderDebt(printingOrder.order.id);
-              return debt > 0.1 ? (
-                <div className="flex justify-between text-[12pt] font-black text-rose-700 pt-1">
-                  <span>باقیمانده (بدهی):</span>
-                  <span>{debt.toLocaleString()}</span>
-                </div>
-              ) : (
-                <div className="text-center font-black text-emerald-700 py-2 bg-slate-50 rounded-xl mt-3 text-[11pt] border border-emerald-100">تصفیه کامل</div>
-              );
-            })()}
-          </div>
-
-          <div className="text-center text-[8pt] font-bold text-slate-400 mt-10 border-t border-slate-100 pt-4">
-            از اعتماد شما سپاسگزاریم
-          </div>
-        </div>
-      )}
-
       <header className="bg-white px-6 py-5 flex justify-between items-center shadow-sm sticky top-0 z-50 no-print">
         <div className="flex items-center gap-3">
           <div className="bg-indigo-600 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-600/20">
@@ -967,7 +969,6 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
         </div>
       )}
 
-      {/* Reports Dashboard Modal */}
       {showReportsModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-end sm:items-center justify-center no-print">
           <div className="absolute inset-0" onClick={() => setShowReportsModal(false)} />
