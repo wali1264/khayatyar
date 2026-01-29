@@ -191,7 +191,8 @@ const App: React.FC = () => {
   const [isStoragePersistent, setIsStoragePersistent] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<{ message: string; type: 'info' | 'success' | 'error' | null }>({ message: '', type: null });
   
-  const [autoBackupEnabled, setAutoBackupEnabled] = useState(localStorage.getItem('auto_cloud_backup') === 'true');
+  // فعال‌سازی پیش‌فرض پشتیبان‌گیری خودکار (Default ON)
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(localStorage.getItem('auto_cloud_backup') !== 'false');
 
   // جلوگیری از بررسی مجدد در یک نشست (Session) واحد
   const sessionVerified = useRef(false);
@@ -307,7 +308,8 @@ const App: React.FC = () => {
 
   const handleAutoBackupCheck = async (userId: string) => {
     if (!navigator.onLine) return; 
-    const isEnabled = localStorage.getItem('auto_cloud_backup') === 'true';
+    // منطق پیش‌فرض روشن (مگر اینکه کاربر غیرفعال کرده باشد)
+    const isEnabled = localStorage.getItem('auto_cloud_backup') !== 'false';
     if (!isEnabled) return;
     const lastBackup = Number(localStorage.getItem('last_auto_backup_ts') || 0);
     const now = Date.now();
