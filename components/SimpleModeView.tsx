@@ -66,11 +66,9 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   const [historyViewId, setHistoryViewId] = useState<string | null>(null);
   const [expandedOrderDetailId, setExpandedOrderDetailId] = useState<string | null>(null);
 
-  // Settings & Customizable Labels
   const [shopInfo, setShopInfo] = useState<ShopInfo>({ name: '', phone: '', address: '', tailorName: '' });
   const [measurementLabels, setMeasurementLabels] = useState<Record<string, string>>(DEFAULT_LABELS);
   
-  // Modals
   const [showCustomerModal, setShowCustomerModal] = useState<Customer | boolean>(false);
   const [showOrderModal, setShowOrderModal] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState<{ orderId: string, custId: string } | null>(null);
@@ -89,7 +87,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   const [activeFieldsSubTab, setActiveFieldsSubTab] = useState<'RENAME' | 'CREATE'>('RENAME');
   const [newFieldName, setNewFieldName] = useState('');
   
-  // Quick Order Local State
   const [quickOrderPrices, setQuickOrderPrices] = useState({ cloth: 0, sewing: 0, received: 0 });
   const [styleDetails, setStyleDetails] = useState<Record<string, string>>({});
 
@@ -386,176 +383,148 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     StorageService.saveSimpleLabels(newLabels);
   };
 
-  // --- سیستم چاپ مهندسی شده جدید (Strict Isolation Bridge) ---
+  // --- موتور چاپ دوگانه حرفه‌ای (Dual-Engine Printing Core) ---
   const handlePrint = (order: Order, customer: Customer) => {
+    // ۱. تشخیص دقیق محیط (موبایل یا دسکتاپ)
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    // ۱. ایجاد پل ارتباطی (Iframe) با ایزولاسیون کامل
-    const printFrame = document.createElement('iframe');
-    
-    // تنظیمات استایل Iframe برای جلوگیری از هرگونه تداخل بصری با برنامه اصلی
-    Object.assign(printFrame.style, {
-      position: 'fixed',
-      right: '-1000px',
-      bottom: '-1000px',
-      width: '80mm',
-      height: '100px',
-      border: '0',
-      visibility: 'hidden',
-      zIndex: '-1'
-    });
-
-    document.body.appendChild(printFrame);
-
     const debt = getOrderDebt(order.id);
     const styleRows = Object.entries(order.styleDetails || {})
       .map(([key, value]) => value ? `
-        <div class="style-item">
-          <span class="style-label">${measurementLabels[key] || key}:</span>
-          <span class="style-value">${value}</span>
+        <div class="field">
+          <span class="field-label">${measurementLabels[key] || key}:</span>
+          <span class="field-value">${value}</span>
         </div>` : '').join('');
 
-    // ۲. تزریق محتوای خالص فاکتور با استانداردهای POS
+    // ۲. تولید محتوای HTML با استانداردهای فیزیکی (PT و MM)
     const htmlContent = `
       <!DOCTYPE html>
       <html dir="rtl" lang="fa">
       <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap" rel="stylesheet">
         <style>
-          /* ریست کلی برای پرینترهای حرارتی */
           * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
-          html, body { 
-            margin: 0; 
-            padding: 0; 
-            background: #fff; 
-            color: #000;
+          body { 
+            margin: 0; padding: 0; background: #fff; color: #000;
             font-family: 'Vazirmatn', sans-serif;
             width: 80mm;
           }
-          body { padding: 5mm; }
-          
-          /* استایل‌های چاپی دسکتاپ برای جلوگیری از جابجایی */
-          @page {
-            size: 80mm auto;
-            margin: 0;
+          @page { size: 80mm auto; margin: 0; }
+          .invoice { padding: 10mm 5mm; width: 80mm; margin: 0 auto; border: 1px solid #eee; }
+          .header { text-align: center; border-bottom: 2pt solid #000; padding-bottom: 10pt; margin-bottom: 15pt; }
+          .shop-name { font-size: 20pt; font-weight: 900; margin: 0; }
+          .shop-sub { font-size: 10pt; font-weight: 700; margin-top: 5pt; }
+          .section { margin-bottom: 15pt; }
+          .row { display: flex; justify-content: space-between; margin-bottom: 5pt; font-size: 11pt; }
+          .title { font-size: 12pt; font-weight: 900; border-bottom: 1pt solid #ddd; padding-bottom: 3pt; margin-bottom: 8pt; }
+          .field { display: flex; justify-content: space-between; font-size: 10pt; padding: 3pt 0; border-bottom: 0.5pt dotted #eee; }
+          .field-label { color: #555; }
+          .field-value { font-weight: 700; }
+          .total-box { border-top: 2pt solid #000; padding-top: 10pt; margin-top: 10pt; }
+          .grand-total { display: flex; justify-content: space-between; font-size: 15pt; font-weight: 900; background: #f9f9f9; padding: 5pt; }
+          .debt-info { display: flex; justify-content: space-between; font-size: 13pt; font-weight: 900; color: #d32f2f; margin-top: 5pt; }
+          .settled { text-align: center; color: #2e7d32; font-weight: 900; font-size: 12pt; border: 1.5pt solid #2e7d32; padding: 5pt; border-radius: 5pt; margin-top: 10pt; }
+          .footer { text-align: center; font-size: 8pt; color: #888; margin-top: 30pt; border-top: 1pt solid #eee; padding-top: 10pt; }
+          /* دکمه چاپ مخصوص موبایل که در زمان چاپ مخفی است */
+          .mobile-print-btn { 
+            display: none; width: 100%; padding: 15pt; background: #4f46e5; color: #fff; 
+            border: none; border-radius: 10pt; font-size: 14pt; font-weight: bold; margin-bottom: 20pt;
           }
-
-          .container { width: 100%; }
-          .header { text-align: center; border-bottom: 2pt solid #000; padding-bottom: 10pt; margin-bottom: 12pt; }
-          .shop-title { font-size: 18pt; font-weight: 900; margin: 0; line-height: 1.2; }
-          .tailor-info { font-size: 10pt; font-weight: 700; margin-top: 4pt; }
-          .contact-info { font-size: 10pt; margin-top: 2pt; direction: ltr; }
-          .address-info { font-size: 8pt; color: #333; margin-top: 4pt; line-height: 1.4; }
-
-          .customer-box { margin-bottom: 12pt; border-bottom: 1px dashed #ccc; padding-bottom: 8pt; }
-          .row { display: flex; justify-content: space-between; margin-bottom: 4pt; align-items: center; }
-          .label { font-size: 11pt; font-weight: 400; }
-          .value { font-size: 11pt; font-weight: 900; }
-
-          .order-title { font-size: 12pt; font-weight: 900; border-bottom: 1px solid #000; padding-bottom: 4pt; margin-bottom: 8pt; }
-          
-          .style-list { margin-bottom: 12pt; }
-          .style-item { display: flex; justify-content: space-between; font-size: 9pt; border-bottom: 1px dotted #eee; padding: 3pt 0; }
-          .style-label { color: #555; }
-          .style-value { font-weight: 700; }
-
-          .price-summary { border-top: 1.5pt solid #000; padding-top: 8pt; margin-top: 5pt; }
-          .total-row { display: flex; justify-content: space-between; font-size: 14pt; font-weight: 900; border-top: 1px solid #ddd; padding-top: 6pt; margin-top: 4pt; }
-          .debt-row { color: #d00; display: flex; justify-content: space-between; font-size: 12pt; font-weight: 900; margin-top: 4pt; }
-          .settled-msg { text-align: center; font-weight: 900; font-size: 11pt; background: #f8f8f8; border: 1px solid #eee; border-radius: 4pt; padding: 6pt; margin-top: 8pt; color: #060; }
-
-          .footer { text-align: center; font-size: 8pt; color: #777; margin-top: 25pt; border-top: 1px solid #eee; padding-top: 8pt; font-style: italic; }
+          @media screen { 
+            body { background: #f0f2f5; display: flex; justify-content: center; padding: 20pt; }
+            .invoice { background: #fff; box-shadow: 0 5pt 15pt rgba(0,0,0,0.1); }
+            ${isMobile ? '.mobile-print-btn { display: block; }' : ''}
+          }
         </style>
       </head>
       <body>
-        <div class="container">
-          <div class="header">
-            <h1 class="shop-title">${shopInfo.name || 'خیاطیار'}</h1>
-            ${shopInfo.tailorName ? `<div class="tailor-info">مدیریت: ${shopInfo.tailorName}</div>` : ''}
-            ${shopInfo.phone ? `<div class="contact-info">${shopInfo.phone}</div>` : ''}
-            ${shopInfo.address ? `<div class="address-info">${shopInfo.address}</div>` : ''}
-          </div>
-
-          <div class="customer-box">
-            <div class="row">
-              <span class="label">نام مشتری:</span>
-              <span class="value">${customer.name}</span>
-            </div>
-            <div class="row" style="opacity: 0.7; font-size: 9pt;">
-              <span>تاریخ تنظیم فاکتور:</span>
-              <span>${order.dateCreated}</span>
-            </div>
-          </div>
-
-          <div class="order-title">شرح سفارش: ${order.description}</div>
+        <div class="invoice">
+          <button class="mobile-print-btn" onclick="window.print()">تایید و چاپ فاکتور</button>
           
-          <div class="style-list">
-            ${styleRows || '<div style="text-align:center; font-size:8pt; color:#999;">جزئیات مدل ثبت نشده است</div>'}
+          <div class="header">
+            <div class="shop-name">${shopInfo.name || 'خیاطیار'}</div>
+            ${shopInfo.tailorName ? `<div class="shop-sub">مدیریت: ${shopInfo.tailorName}</div>` : ''}
+            ${shopInfo.phone ? `<div class="shop-sub" dir="ltr">${shopInfo.phone}</div>` : ''}
+            ${shopInfo.address ? `<div style="font-size: 8pt; margin-top: 5pt;">${shopInfo.address}</div>` : ''}
           </div>
 
-          <div class="price-summary">
-            <div class="row"><span class="label">قیمت پارچه:</span><span class="value">${(order.clothPrice || 0).toLocaleString()}</span></div>
-            <div class="row"><span class="label">اجرت دوخت:</span><span class="value">${(order.sewingFee || 0).toLocaleString()}</span></div>
-            <div class="total-row">
+          <div class="section">
+            <div class="row"><b>مشتری:</b> <span>${customer.name}</span></div>
+            <div class="row"><b>تاریخ:</b> <span>${order.dateCreated}</span></div>
+          </div>
+
+          <div class="section">
+            <div class="title">شرح سفارش: ${order.description}</div>
+            <div class="style-fields">${styleRows}</div>
+          </div>
+
+          <div class="total-box">
+            <div class="row"><span>قیمت پارچه:</span> <span>${(order.clothPrice || 0).toLocaleString()}</span></div>
+            <div class="row"><span>اجرت دوخت:</span> <span>${(order.sewingFee || 0).toLocaleString()}</span></div>
+            <div class="grand-total">
               <span>جمع کل:</span>
-              <span>${(order.totalPrice || 0).toLocaleString()} <small style="font-size:8pt;">افغانی</small></span>
+              <span>${(order.totalPrice || 0).toLocaleString()} <small>افغانی</small></span>
             </div>
             ${debt > 0.1 
-              ? `<div class="debt-row"><span>مانده حساب (بدهی):</span><span>${debt.toLocaleString()}</span></div>` 
-              : `<div class="settled-msg">حساب این فاکتور کاملاً تسویه شده است</div>`}
+              ? `<div class="debt-info"><span>مانده حساب:</span> <span>${debt.toLocaleString()}</span></div>` 
+              : `<div class="settled">تصفیه کامل</div>`}
           </div>
 
-          <div class="footer">طراحی و مدیریت توسط اپلیکیشن خیاطیار</div>
+          <div class="footer">از اعتماد شما متشکریم - اپلیکیشن خیاطیار</div>
         </div>
 
         <script>
-          // سیستم هوشمند رندرینگ و پاکسازی
           window.onload = () => {
-            // انتظار برای اطمینان از بارگذاری کامل فونت‌های فارسی در موبایل
             setTimeout(() => {
-              window.focus();
-              window.print();
-              // ارسال سیگنال اتمام به برنامه اصلی
-              window.parent.postMessage('FINISH_PRINT', '*');
-            }, ${isMobile ? 1200 : 500});
+              if (!${isMobile}) {
+                window.print();
+                setTimeout(() => window.parent.postMessage('FINISH', '*'), 1000);
+              }
+            }, 500);
           };
         </script>
       </body>
       </html>
     `;
 
-    const doc = printFrame.contentWindow?.document;
-    if (doc) {
-      doc.open();
-      doc.write(htmlContent);
-      doc.close();
+    // ۳. اجرای استراتژی بر اساس دستگاه
+    if (isMobile) {
+      // استراتژی تب جدید برای موبایل (Isolated Tab Engine)
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        setShowInvoiceOptions(null);
+      } else {
+        alert('لطفاً اجازه باز شدن پنجره (Pop-up) را بدهید.');
+      }
+    } else {
+      // استراتژی Iframe برای دسکتاپ (Precision Iframe Engine)
+      const printFrame = document.createElement('iframe');
+      Object.assign(printFrame.style, {
+        position: 'fixed', right: '-3000px', bottom: '-3000px',
+        width: '80mm', height: '100mm'
+      });
+      document.body.appendChild(printFrame);
+
+      const onMessage = (e: MessageEvent) => {
+        if (e.data === 'FINISH') {
+          document.body.removeChild(printFrame);
+          window.removeEventListener('message', onMessage);
+          setShowInvoiceOptions(null);
+        }
+      };
+      window.addEventListener('message', onMessage);
+
+      const doc = printFrame.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(htmlContent);
+        doc.close();
+      }
     }
-
-    // ۳. مدیریت چرخه حیات چاپ و پاکسازی منابع
-    const cleanup = () => {
-      if (document.body.contains(printFrame)) {
-        document.body.removeChild(printFrame);
-      }
-      setShowInvoiceOptions(null);
-      window.removeEventListener('message', onMessage);
-    };
-
-    const onMessage = (event: MessageEvent) => {
-      if (event.data === 'FINISH_PRINT') {
-        cleanup();
-      }
-    };
-
-    window.addEventListener('message', onMessage);
-
-    // راهکار پشتیبان برای زمانی که پنجره چاپ در برخی مرورگرها سیگنال نمی‌فرستد
-    window.addEventListener('focus', () => {
-      setTimeout(cleanup, 1500);
-    }, { once: true });
   };
-  // --- پایان سیستم چاپ جدید ---
 
   const handleWhatsAppShare = (order: Order, customer: Customer) => {
     const debt = getOrderDebt(order.id);
@@ -915,7 +884,7 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
         </div>
       )}
 
-      {/* Reminders Modal */}
+      {/* بقیه مدال‌ها بدون تغییر باقی می‌مانند */}
       {showRemindersModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-end sm:items-center justify-center no-print">
           <div className="absolute inset-0" onClick={() => setShowRemindersModal(false)} />
