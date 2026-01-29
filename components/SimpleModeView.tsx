@@ -391,11 +391,27 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
 
   const handlePrint = (order: Order, customer: Customer) => {
     setPrintingOrder({ order, customer });
-    setTimeout(() => {
-      window.print();
+    
+    // بهبود مدیریت رویداد چاپ برای موبایل
+    const handleAfterPrint = () => {
       setPrintingOrder(null);
       setShowInvoiceOptions(null);
-    }, 250);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    // تاخیر ۵۰۰ میلی‌ثانیه‌ای برای اطمینان از رندر کامل استایل‌ها در موبایل
+    setTimeout(() => {
+      window.print();
+      // برای مرورگرهایی که afterprint را پشتیبانی نمی‌کنند
+      setTimeout(() => {
+        if (printingOrder) {
+          setPrintingOrder(null);
+          setShowInvoiceOptions(null);
+        }
+      }, 2000);
+    }, 500);
   };
 
   const handleWhatsAppShare = (order: Order, customer: Customer) => {
@@ -428,24 +444,21 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
             padding: 0 !important;
             height: auto !important;
             background: white !important;
+            visibility: hidden !important; /* مخفی سازی هوشمند برای جلوگیری از صفحه سفید موبایل */
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          header, .no-print, button, input, .fixed, .absolute:not(.print-section), [role="dialog"], aside {
+          #root, main, header, .no-print, [role="dialog"], .fixed {
             display: none !important;
-            height: 0 !important;
-            overflow: hidden !important;
-          }
-          #root, main {
-            display: block !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            visibility: hidden !important;
           }
           .print-section {
-            display: block !important;
             visibility: visible !important;
+            display: block !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 80mm !important;
-            min-width: 80mm !important;
             margin: 0 auto !important;
             padding: 8mm !important;
             background: white !important;
@@ -453,7 +466,6 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
             direction: rtl !important;
             font-family: 'Vazirmatn', sans-serif !important;
             color: black !important;
-            position: relative !important;
           }
           @page {
             size: 80mm auto;
