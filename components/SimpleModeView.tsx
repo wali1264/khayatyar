@@ -383,10 +383,8 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     StorageService.saveSimpleLabels(newLabels);
   };
 
-  // --- موتور چاپ نسخه ۳ (Universal Fluid Print) ---
+  // --- موتور چاپ نسخه ۴ (Silent Background Injection) ---
   const handlePrint = (order: Order, customer: Customer) => {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
     const debt = getOrderDebt(order.id);
     const styleRows = Object.entries(order.styleDetails || {})
       .map(([key, value]) => value ? `
@@ -403,53 +401,35 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap" rel="stylesheet">
         <style>
-          /* ریست برای تمام انواع کاغذها */
           * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           html, body { 
             margin: 0; padding: 0; background: #fff; color: #000;
             font-family: 'Vazirmatn', sans-serif;
             width: 100%;
           }
-          
-          /* تنظیمات انطباق‌پذیر با کاغذ */
           @page { margin: 5mm; size: auto; }
-          
-          /* کانتینر فاکتور: در دسکتاپ/A4 محدود و در رول/موبایل تمام عرض */
           .invoice-wrapper {
-            max-width: 210mm; /* حداکثر عرض A4 برای زیبایی در دسکتاپ */
+            max-width: 210mm;
             margin: 0 auto;
             padding: 10mm;
-            border: 1px solid #f0f0f0;
           }
-
           @media print {
-            .invoice-wrapper { 
-              max-width: none; 
-              width: 100%; 
-              padding: 5mm; 
-              border: none;
-            }
-            .no-print { display: none !important; }
+            .invoice-wrapper { max-width: none; width: 100%; padding: 5mm; }
           }
-
           .header { text-align: center; border-bottom: 2pt solid #000; padding-bottom: 15pt; margin-bottom: 20pt; }
           .shop-name { font-size: 24pt; font-weight: 900; margin: 0; }
-          .shop-sub { font-size: 11pt; font-weight: 700; margin-top: 6pt; color: #333; }
-          
+          .shop-sub { font-size: 11pt; font-weight: 700; margin-top: 6pt; }
           .section { margin-bottom: 20pt; }
-          .title { font-size: 14pt; font-weight: 900; border-bottom: 1pt solid #000; padding-bottom: 4pt; margin-bottom: 10pt; background: #f9f9f9; padding-right: 5pt; }
-          
+          .title { font-size: 14pt; font-weight: 900; border-bottom: 1pt solid #000; padding-bottom: 4pt; margin-bottom: 10pt; }
           .grid-row { display: flex; justify-content: space-between; margin-bottom: 8pt; font-size: 12pt; }
           .field { display: flex; justify-content: space-between; font-size: 11pt; padding: 4pt 0; border-bottom: 0.5pt dotted #ddd; }
           .field-label { color: #555; }
           .field-value { font-weight: 700; }
-          
           .summary-box { border-top: 2pt solid #000; padding-top: 15pt; margin-top: 20pt; }
           .total-line { display: flex; justify-content: space-between; font-size: 18pt; font-weight: 900; margin-top: 10pt; }
           .debt-line { display: flex; justify-content: space-between; font-size: 14pt; font-weight: 900; color: #d32f2f; margin-top: 8pt; }
           .settled { text-align: center; color: #2e7d32; font-weight: 900; font-size: 13pt; border: 2pt solid #2e7d32; padding: 10pt; border-radius: 8pt; margin-top: 15pt; }
-          
-          .footer { text-align: center; font-size: 9pt; color: #777; margin-top: 40pt; border-top: 1pt solid #eee; padding-top: 15pt; font-style: italic; }
+          .footer { text-align: center; font-size: 9pt; color: #777; margin-top: 40pt; border-top: 1pt solid #eee; padding-top: 15pt; }
         </style>
       </head>
       <body>
@@ -458,84 +438,69 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
             <div class="shop-name">${shopInfo.name || 'خیاطیار'}</div>
             ${shopInfo.tailorName ? `<div class="shop-sub">مدیریت: ${shopInfo.tailorName}</div>` : ''}
             ${shopInfo.phone ? `<div class="shop-sub" dir="ltr">${shopInfo.phone}</div>` : ''}
-            ${shopInfo.address ? `<div style="font-size: 9pt; margin-top: 6pt; color:#666;">${shopInfo.address}</div>` : ''}
+            ${shopInfo.address ? `<div style="font-size: 9pt; margin-top: 6pt;">${shopInfo.address}</div>` : ''}
           </div>
-
           <div class="section">
-            <div class="grid-row"><span><b>نام مشتری:</b> ${customer.name}</span> <span dir="ltr"><b>کد:</b> ${customer.code}</span></div>
-            <div class="grid-row"><span><b>تاریخ سفارش:</b> ${order.dateCreated}</span></div>
+            <div class="grid-row"><span><b>مشتری:</b> ${customer.name}</span> <span dir="ltr"><b>کد:</b> ${customer.code}</span></div>
+            <div class="grid-row"><span><b>تاریخ:</b> ${order.dateCreated}</span></div>
           </div>
-
           <div class="section">
-            <div class="title">جزئیات سفارش: ${order.description}</div>
+            <div class="title">شرح سفارش: ${order.description}</div>
             <div class="style-fields">${styleRows}</div>
           </div>
-
           <div class="summary-box">
             <div class="grid-row"><span>قیمت پارچه:</span> <span>${(order.clothPrice || 0).toLocaleString()}</span></div>
             <div class="grid-row"><span>اجرت دوخت:</span> <span>${(order.sewingFee || 0).toLocaleString()}</span></div>
-            <div class="total-line">
-              <span>جمع کل:</span>
-              <span>${(order.totalPrice || 0).toLocaleString()} <small style="font-size:10pt;">افغانی</small></span>
-            </div>
-            ${debt > 0.1 
-              ? `<div class="debt-line"><span>مانده حساب:</span> <span>${debt.toLocaleString()} افغانی</span></div>` 
-              : `<div class="settled">حساب این فاکتور تسویه می‌باشد</div>`}
+            <div class="total-line"><span>جمع کل:</span><span>${(order.totalPrice || 0).toLocaleString()} افغانی</span></div>
+            ${debt > 0.1 ? `<div class="debt-line"><span>مانده حساب:</span> <span>${debt.toLocaleString()}</span></div>` : `<div class="settled">تسویه کامل</div>`}
           </div>
-
-          <div class="footer">قدردان اعتماد شما هستیم.</div>
+          <div class="footer">طراحی توسط اپلیکیشن خیاطیار</div>
         </div>
-
         <script>
           window.onload = () => {
-            // تاخیر اندک برای اطمینان از رندر شدن استایل‌ها و فونت‌ها
             setTimeout(() => {
+              window.focus();
               window.print();
-              // در موبایل تب را بلافاصله بعد از چاپ نمی‌بندیم تا کاربر فرصت کار با دیالوگ را داشته باشد
-              if (!${isMobile}) {
-                setTimeout(() => window.parent.postMessage('PRINT_DONE', '*'), 1500);
-              }
-            }, 600);
+              setTimeout(() => window.parent.postMessage('CLOSE_PRINT', '*'), 1000);
+            }, 500);
           };
         </script>
       </body>
       </html>
     `;
 
-    if (isMobile) {
-      // در موبایل مستقیماً یک تب جدید با محتوای فاکتور باز می‌کنیم
-      // این کار از ایجاد اسکرین‌شات جلوگیری کرده و پنجره چاپ استاندارد را باز می‌کند
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-        setShowInvoiceOptions(null);
-      } else {
-        alert('لطفاً اجازه باز شدن پنجره‌های Pop-up را در تنظیمات مرورگر خود بدهید.');
-      }
-    } else {
-      // در دسکتاپ از همان Iframe پنهان استفاده می‌کنیم که بهترین تجربه کاربری را دارد
-      const printFrame = document.createElement('iframe');
-      Object.assign(printFrame.style, {
-        position: 'fixed', right: '-5000px', bottom: '-5000px', width: '210mm', height: '100mm'
-      });
-      document.body.appendChild(printFrame);
+    // ایجاد Iframe پنهان برای هر دو محیط موبایل و دسکتاپ
+    // این کار باعث حذف تب about:blank و محوشدگی لحظه‌ای می‌شود
+    const printFrame = document.createElement('iframe');
+    Object.assign(printFrame.style, {
+      position: 'fixed',
+      right: '-5000px',
+      bottom: '-5000px',
+      width: '210mm',
+      height: '100mm',
+      border: '0',
+      visibility: 'hidden'
+    });
+    document.body.appendChild(printFrame);
 
-      const onMessage = (e: MessageEvent) => {
-        if (e.data === 'PRINT_DONE') {
-          if (document.body.contains(printFrame)) document.body.removeChild(printFrame);
-          window.removeEventListener('message', onMessage);
-          setShowInvoiceOptions(null);
+    const onMessage = (e: MessageEvent) => {
+      if (e.data === 'CLOSE_PRINT') {
+        if (document.body.contains(printFrame)) {
+          document.body.removeChild(printFrame);
         }
-      };
-      window.addEventListener('message', onMessage);
-
-      const doc = printFrame.contentWindow?.document;
-      if (doc) {
-        doc.open();
-        doc.write(htmlContent);
-        doc.close();
+        window.removeEventListener('message', onMessage);
+        setShowInvoiceOptions(null);
       }
+    };
+    window.addEventListener('message', onMessage);
+
+    const doc = printFrame.contentWindow?.document;
+    if (doc) {
+      doc.open();
+      doc.write(htmlContent);
+      doc.close();
+      // تمرکز اجباری برای موبایل جهت جلوگیری از چاپ اسکرین‌شات
+      printFrame.contentWindow?.focus();
     }
   };
 
@@ -988,7 +953,7 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
                     </div>
                   )) : (
                     <div className="text-center py-10 opacity-30 bg-slate-50 rounded-[2rem]">
-                      <Gift size={32} className="mx-auto mb-2" />
+                      <CheckCircle2 size={32} className="mx-auto mb-2" />
                       <div className="text-xs font-bold">قفسه لباس‌های آماده خالی است.</div>
                     </div>
                   )}
