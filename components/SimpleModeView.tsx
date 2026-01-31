@@ -57,6 +57,12 @@ interface SimpleModeViewProps {
 
 const PROTECTED_KEYS = ['height', 'sleeveLength', 'shoulder', 'neck', 'waist', 'outseam', 'ankle'];
 
+const DEFAULT_MESSAGES = {
+  ready_pickup: "مشتری گرامی [نام مشتری]، سفارش شما ([شرح سفارش]) آماده تحویل است. منتظر حضور شما در [نام خیاطی] هستیم.",
+  reminder_pickup: "مشتری گرامی [نام مشتری]، لباس شما ([شرح سفارش]) آماده است. لطفاً جهت تحویل به [نام خیاطی] مراجعه نمایید.",
+  reminder_debt: "مشتری گرامی [نام مشتری]، با احترام یادآوری می‌شود مبلغ [مبلغ] افغانی بابت مانده حساب شما در [نام خیاطی] معوق مانده است. لطفاً جهت تسویه اقدام فرمایید."
+};
+
 const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -68,6 +74,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
 
   const [shopInfo, setShopInfo] = useState<ShopInfo>({ name: '', phone: '', address: '', tailorName: '' });
   const [measurementLabels, setMeasurementLabels] = useState<Record<string, string>>(DEFAULT_LABELS);
+  const [customMessages, setCustomMessages] = useState<Record<string, string>>(DEFAULT_MESSAGES);
   
   const [showCustomerModal, setShowCustomerModal] = useState<Customer | boolean>(false);
   const [showOrderModal, setShowOrderModal] = useState<string | null>(null);
@@ -83,7 +90,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   const [autoSmsEnabled, setAutoSmsEnabled] = useState(localStorage.getItem('auto_sms_enabled') !== 'false');
   const [autoWhatsAppEnabled, setAutoWhatsAppEnabled] = useState(localStorage.getItem('auto_whatsapp_enabled') === 'true');
 
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'SHOP' | 'FIELDS'>('SHOP');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'SHOP' | 'FIELDS' | 'MESSAGES'>('SHOP');
   const [activeFieldsSubTab, setActiveFieldsSubTab] = useState<'RENAME' | 'CREATE'>('RENAME');
   const [newFieldName, setNewFieldName] = useState('');
   
@@ -114,6 +121,8 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
       if (savedInfo) setShopInfo(savedInfo);
       const savedLabels = await StorageService.getSimpleLabels(DEFAULT_LABELS);
       setMeasurementLabels(savedLabels);
+      const savedMessages = await StorageService.getCustomMessages(DEFAULT_MESSAGES);
+      setCustomMessages(savedMessages);
     };
     loadData();
   }, []);
@@ -290,29 +299,46 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     await StorageService.saveSimpleOrders(updatedOrders);
     if (newStatus === OrderStatus.READY) {
       if (autoWhatsAppEnabled) {
-        sendPickupWhatsApp(orderId);
+        sendPickupWhatsApp(orderId, 'ready_pickup');
       } else if (autoSmsEnabled) {
-        sendPickupSMS(orderId);
+        sendPickupSMS(orderId, 'ready_pickup');
       }
     }
     setShowStatusModal(null);
   };
 
-  const sendPickupSMS = (orderId: string) => {
+  const formatMessage = (templateKey: string, data: { customerName: string, shopName: string, orderDesc?: string, amount?: string }) => {
+    let msg = customMessages[templateKey] || DEFAULT_MESSAGES[templateKey as keyof typeof DEFAULT_MESSAGES];
+    msg = msg.replace(/\[نام مشتری\]/g, data.customerName);
+    msg = msg.replace(/\[نام خیاطی\]/g, data.shopName);
+    if (data.orderDesc) msg = msg.replace(/\[شرح سفارش\]/g, data.orderDesc);
+    if (data.amount) msg = msg.replace(/\[مبلغ\]/g, data.amount);
+    return msg;
+  };
+
+  const sendPickupSMS = (orderId: string, type: 'ready_pickup' | 'reminder_pickup' = 'reminder_pickup') => {
     const order = orders.find(o => o.id === orderId);
     const customer = customers.find(c => c.id === order?.customerId);
     if (order && customer) {
-      const message = `مشتری گرامی ${customer.name}، سفارش شما (${order.description}) آماده تحویل است. منتظر حضور شما در ${shopInfo.name || 'خیاطی'} هستیم.`;
+      const message = formatMessage(type, {
+        customerName: customer.name,
+        shopName: shopInfo.name || 'خیاطیار',
+        orderDesc: order.description
+      });
       const smsUrl = `sms:${customer.phone}${navigator.userAgent.match(/iPhone/i) ? '&' : '?'}body=${encodeURIComponent(message)}`;
       window.location.href = smsUrl;
     }
   };
 
-  const sendPickupWhatsApp = (orderId: string) => {
+  const sendPickupWhatsApp = (orderId: string, type: 'ready_pickup' | 'reminder_pickup' = 'reminder_pickup') => {
     const order = orders.find(o => o.id === orderId);
     const customer = customers.find(c => c.id === order?.customerId);
     if (order && customer) {
-      const message = `مشتری گرامی ${customer.name}، سفارش شما (${order.description}) آماده تحویل است. منتظر حضور شما در ${shopInfo.name || 'خیاطی'} هستیم.`;
+      const message = formatMessage(type, {
+        customerName: customer.name,
+        shopName: shopInfo.name || 'خیاطیار',
+        orderDesc: order.description
+      });
       const waUrl = `https://wa.me/${customer.phone.replace(/^0/, '93')}?text=${encodeURIComponent(message)}`;
       window.open(waUrl, '_blank');
     }
@@ -321,7 +347,11 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   const sendDebtSMS = (custId: string, amount: number) => {
     const customer = customers.find(c => c.id === custId);
     if (customer) {
-      const message = `مشتری گرامی ${customer.name}، با احترام یادآوری می‌شود مبلغ ${amount.toLocaleString()} افغانی بابت مانده حساب شما در ${shopInfo.name || 'خیاطی'} معوق مانده است. لطفاً جهت تسویه اقدام فرمایید.`;
+      const message = formatMessage('reminder_debt', {
+        customerName: customer.name,
+        shopName: shopInfo.name || 'خیاطیار',
+        amount: amount.toLocaleString()
+      });
       const smsUrl = `sms:${customer.phone}${navigator.userAgent.match(/iPhone/i) ? '&' : '?'}body=${encodeURIComponent(message)}`;
       window.location.href = smsUrl;
     }
@@ -356,6 +386,12 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   const handleSaveShopInfo = async (e: React.FormEvent) => {
     e.preventDefault();
     await StorageService.saveShopInfo(shopInfo);
+    setShowSettingsModal(false);
+  };
+
+  const handleSaveMessages = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await StorageService.saveCustomMessages(customMessages);
     setShowSettingsModal(false);
   };
 
@@ -1317,20 +1353,26 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
             <div className="flex bg-slate-100 p-1.5 rounded-[1.5rem] gap-1 shadow-inner">
                <button 
                 onClick={() => setActiveSettingsTab('SHOP')}
-                className={`flex-1 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 ${activeSettingsTab === 'SHOP' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-white/50'}`}
+                className={`flex-1 py-3 rounded-2xl text-[10px] font-black transition-all flex items-center justify-center gap-1 ${activeSettingsTab === 'SHOP' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-white/50'}`}
                >
-                 <Store size={16} /> اطلاعات فروشگاه
+                 <Store size={14} /> فروشگاه
                </button>
                <button 
                 onClick={() => setActiveSettingsTab('FIELDS')}
-                className={`flex-1 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 ${activeSettingsTab === 'FIELDS' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-white/50'}`}
+                className={`flex-1 py-3 rounded-2xl text-[10px] font-black transition-all flex items-center justify-center gap-1 ${activeSettingsTab === 'FIELDS' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-white/50'}`}
                >
-                 <Ruler size={16} /> مدیریت اندازه‌ها
+                 <Ruler size={14} /> اندازه‌ها
+               </button>
+               <button 
+                onClick={() => setActiveSettingsTab('MESSAGES')}
+                className={`flex-1 py-3 rounded-2xl text-[10px] font-black transition-all flex items-center justify-center gap-1 ${activeSettingsTab === 'MESSAGES' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-white/50'}`}
+               >
+                 <MessageSquare size={14} /> پیام‌ها
                </button>
             </div>
 
             <div className="flex-1 overflow-y-auto no-scrollbar py-2">
-              {activeSettingsTab === 'SHOP' ? (
+              {activeSettingsTab === 'SHOP' && (
                 <form onSubmit={handleSaveShopInfo} className="space-y-5 pb-6">
                    <div className="space-y-1">
                       <label className="text-[11px] font-black text-slate-700 mr-2 uppercase">نام خیاطی / برند</label>
@@ -1373,7 +1415,9 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
                      <Save size={22} /> ذخیره اطلاعات فروشگاه
                    </button>
                 </form>
-              ) : (
+              )}
+
+              {activeSettingsTab === 'FIELDS' && (
                 <div className="space-y-6 pb-6">
                   <div className="flex bg-slate-50 p-1 rounded-2xl gap-1 border border-slate-100">
                     <button 
@@ -1450,6 +1494,59 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
                     </div>
                   )}
                 </div>
+              )}
+
+              {activeSettingsTab === 'MESSAGES' && (
+                <form onSubmit={handleSaveMessages} className="space-y-6 pb-6 animate-in fade-in duration-300">
+                  <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-start gap-3">
+                    <Info size={18} className="text-blue-500 mt-1 shrink-0" />
+                    <p className="text-[10px] text-blue-700 leading-relaxed font-bold">
+                      شما می‌توانید از متغیرهای <span className="text-blue-900">[نام مشتری]</span>، <span className="text-blue-900">[نام خیاطی]</span>، <span className="text-blue-900">[شرح سفارش]</span> و <span className="text-blue-900">[مبلغ]</span> در متن استفاده کنید تا سیستم به صورت خودکار آنها را جایگزین کند.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-slate-700 mr-2 flex items-center gap-2">
+                        <Zap size={14} className="text-amber-500" /> پیام اعلان «آماده تحویل»
+                      </label>
+                      <textarea 
+                        value={customMessages.ready_pickup}
+                        onChange={e => setCustomMessages({...customMessages, ready_pickup: e.target.value})}
+                        className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 focus:ring-2 ring-indigo-400 h-28 text-sm"
+                        placeholder="متن خودکار هنگام تغییر وضعیت به آماده تحویل..."
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-slate-700 mr-2 flex items-center gap-2">
+                        <Bell size={14} className="text-indigo-500" /> پیام یادآوری لباس‌های مانده
+                      </label>
+                      <textarea 
+                        value={customMessages.reminder_pickup}
+                        onChange={e => setCustomMessages({...customMessages, reminder_pickup: e.target.value})}
+                        className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 focus:ring-2 ring-indigo-400 h-28 text-sm"
+                        placeholder="متن یادآوری برای مشتریانی که لباسشان را نبرده‌اند..."
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-slate-700 mr-2 flex items-center gap-2">
+                        <DollarSign size={14} className="text-rose-500" /> پیام یادآوری بدهی معوقه
+                      </label>
+                      <textarea 
+                        value={customMessages.reminder_debt}
+                        onChange={e => setCustomMessages({...customMessages, reminder_debt: e.target.value})}
+                        className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 focus:ring-2 ring-indigo-400 h-28 text-sm"
+                        placeholder="متن یادآوری جهت تسویه حساب..."
+                      />
+                    </div>
+                  </div>
+
+                  <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 active:scale-95 transition-all">
+                    <Save size={22} /> ذخیره قالب‌های پیام
+                  </button>
+                </form>
               )}
             </div>
           </div>

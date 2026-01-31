@@ -20,7 +20,8 @@ const STORAGE_KEYS = {
 
   // کلیدهای جدید شخصی‌سازی
   SHOP_INFO: 'shop_info_config',
-  SIMPLE_LABELS: 'simple_measurement_labels_config'
+  SIMPLE_LABELS: 'simple_measurement_labels_config',
+  CUSTOM_MESSAGES: 'tailor_custom_messages_config'
 };
 
 interface ApprovalCache {
@@ -153,6 +154,15 @@ export const StorageService = {
   },
   saveSimpleLabels: async (labels: Record<string, string>) => {
     await db.set(STORAGE_KEYS.SIMPLE_LABELS, labels);
+  },
+
+  // پیام‌های آماده شخصی‌سازی شده
+  getCustomMessages: async (defaultMessages: Record<string, string>): Promise<Record<string, string>> => {
+    const saved = await db.get<Record<string, string>>(STORAGE_KEYS.CUSTOM_MESSAGES);
+    return saved || defaultMessages;
+  },
+  saveCustomMessages: async (messages: Record<string, string>) => {
+    await db.set(STORAGE_KEYS.CUSTOM_MESSAGES, messages);
   },
 
   getApprovalCache: async (): Promise<ApprovalCache | null> => {
