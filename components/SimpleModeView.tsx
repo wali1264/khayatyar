@@ -386,12 +386,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   // --- موتور چاپ نسخه ۵ (Silent Background Injection - حل نهایی مشکل اسکرین‌شات) ---
   const handlePrint = (order: Order, customer: Customer) => {
     const debt = getOrderDebt(order.id);
-    const styleRows = Object.entries(order.styleDetails || {})
-      .map(([key, value]) => value ? `
-        <div class="field">
-          <span class="field-label">${measurementLabels[key] || key}:</span>
-          <span class="field-value">${value}</span>
-        </div>` : '').join('');
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -446,7 +440,6 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
           </div>
           <div class="section">
             <div class="title">شرح سفارش: ${order.description}</div>
-            <div class="style-fields">${styleRows}</div>
           </div>
           <div class="summary-box">
             <div class="grid-row"><span>قیمت پارچه:</span> <span>${(order.clothPrice || 0).toLocaleString()}</span></div>
