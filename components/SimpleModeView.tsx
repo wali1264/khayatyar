@@ -262,7 +262,8 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
       clothPrice: cloth,
       sewingFee: sewing,
       deposit: received,
-      styleDetails: { ...styleDetails }
+      styleDetails: { ...styleDetails },
+      notes: ''
     };
 
     const newTx: Transaction = {
@@ -812,6 +813,34 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
                                         <div className="col-span-2 text-center text-[9px] text-slate-400 py-2">جزئیات مدل ثبت نشده است.</div>
                                       )}
                                    </div>
+                                 </div>
+
+                                 {/* بخش جدید: یادداشت‌های تکمیلی با رشد خودکار */}
+                                 <div className="mt-4 pt-4 border-t border-slate-200">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Edit3 size={14} className="text-indigo-600" />
+                                      <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">جزئیات و یادداشت‌های بیشتر:</span>
+                                    </div>
+                                    <textarea
+                                      className="w-full bg-white border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-800 outline-none focus:ring-2 ring-indigo-400 transition-all resize-none min-h-[80px] overflow-hidden"
+                                      placeholder="مثلاً: نیاز به گلدوزی خاص در لبه آستین دارد، یا پارچه از مشتری گرفته شده..."
+                                      value={order.notes || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setOrders(prev => prev.map(o => o.id === order.id ? { ...o, notes: val } : o));
+                                        // رشد خودکار ارتفاع
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = `${e.target.scrollHeight}px`;
+                                      }}
+                                      onFocus={(e) => {
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = `${e.target.scrollHeight}px`;
+                                      }}
+                                      onBlur={async () => {
+                                        // ذخیره نهایی در دیتابیس هنگام خروج از فیلد
+                                        await StorageService.saveSimpleOrders(orders);
+                                      }}
+                                    />
                                  </div>
                               </div>
                             )}

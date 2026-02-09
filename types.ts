@@ -50,6 +50,7 @@ export interface Order {
   deposit?: number;
   photo?: string; // base64
   styleDetails?: Record<string, string>; // جزئیات مدل (یقه، آستین و غیره)
+  notes?: string; // جزئیات و یادداشت‌های بیشتر
 }
 
 export interface ShopInfo {
