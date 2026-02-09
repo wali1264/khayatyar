@@ -32,7 +32,8 @@ import {
   EyeOff, 
   CheckCircle2, 
   AlertCircle,
-  Cpu
+  Cpu,
+  AlertTriangle
 } from 'lucide-react';
 import SimpleModeView from './components/SimpleModeView';
 
@@ -176,6 +177,38 @@ const ApprovalView = ({ user, checkApproval, signOut }: any) => (
   </div>
 );
 
+const ExitConfirmationModal = ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
+  <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
+    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity animate-in fade-in" onClick={onCancel} />
+    <div className="relative bg-white/90 backdrop-blur-xl border border-white/20 w-full max-w-sm rounded-[2.5rem] p-8 space-y-6 shadow-2xl animate-in slide-in-from-bottom-8 duration-300">
+       <div className="text-center space-y-4">
+          <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-3xl flex items-center justify-center mx-auto mb-2 animate-bounce">
+             <AlertTriangle size={40} />
+          </div>
+          <h3 className="text-xl font-black text-slate-800">خروج از برنامه؟</h3>
+          <p className="text-sm text-slate-500 font-bold leading-relaxed">
+            آیا مطمئن هستید که می‌خواهید برنامه را ببندید؟ تغییرات ذخیره نشده ممکن است از بین بروند.
+          </p>
+       </div>
+
+       <div className="flex flex-col gap-3">
+          <button 
+            onClick={onCancel}
+            className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+          >
+            خیر، می‌مانم
+          </button>
+          <button 
+            onClick={onConfirm}
+            className="w-full py-3 text-slate-400 font-bold text-sm hover:text-rose-500 transition-colors"
+          >
+            بله، خارج می‌شوم
+          </button>
+       </div>
+    </div>
+  </div>
+);
+
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [isApproved, setIsApproved] = useState<boolean>(false);
@@ -191,6 +224,10 @@ const App: React.FC = () => {
   const [isStoragePersistent, setIsStoragePersistent] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<{ message: string; type: 'info' | 'success' | 'error' | null }>({ message: '', type: null });
   
+  // سیستم محافظت از خروج
+  const [showExitModal, setShowExitModal] = useState(false);
+  const exitAllowed = useRef(false);
+
   // فعال‌سازی پیش‌فرض پشتیبان‌گیری خودکار (Default ON)
   const [autoBackupEnabled, setAutoBackupEnabled] = useState(localStorage.getItem('auto_cloud_backup') !== 'false');
 
@@ -206,6 +243,28 @@ const App: React.FC = () => {
 
     initApp();
 
+    // هندلینگ دکمه بازگشت در موبایل (History API)
+    window.history.pushState({ noExit: true }, '');
+    const handlePopState = (event: PopStateEvent) => {
+      if (!exitAllowed.current) {
+        // جلوگیری از خروج و نمایش مودال
+        window.history.pushState({ noExit: true }, '');
+        setShowExitModal(true);
+      }
+    };
+
+    // هندلینگ بستن تب یا رفرش (سیستمی)
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!exitAllowed.current) {
+        e.preventDefault();
+        e.returnValue = 'آیا مطمئن هستید؟';
+        return 'آیا مطمئن هستید؟';
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
         setUser(session.user);
@@ -220,6 +279,8 @@ const App: React.FC = () => {
 
     return () => {
       authListener.subscription.unsubscribe();
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);
 
@@ -427,6 +488,19 @@ const App: React.FC = () => {
     localStorage.setItem('auto_cloud_backup', newState.toString());
   };
 
+  const handleFinalExit = () => {
+    exitAllowed.current = true;
+    window.history.back();
+    // در صورتی که back کار نکرد (مثلاً در دسکتاپ):
+    setTimeout(() => {
+      if (window.opener) {
+        window.close();
+      } else {
+        window.location.href = 'about:blank';
+      }
+    }, 100);
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -462,6 +536,14 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#f8fafc]">
       <SimpleModeView onOpenBackup={() => setShowBackupModal(true)} />
+
+      {/* مودال خروج تصادفی */}
+      {showExitModal && (
+        <ExitConfirmationModal 
+          onConfirm={handleFinalExit}
+          onCancel={() => setShowExitModal(false)}
+        />
+      )}
 
       {showBackupModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-end md:items-center justify-center">
