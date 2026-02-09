@@ -96,6 +96,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
   
   const [quickOrderPrices, setQuickOrderPrices] = useState({ cloth: 0, sewing: 0, received: 0 });
   const [styleDetails, setStyleDetails] = useState<Record<string, string>>({});
+  const [paymentInputAmt, setPaymentInputAmt] = useState(0);
 
   useEffect(() => {
     const loadData = async () => {
@@ -377,6 +378,7 @@ const SimpleModeView: React.FC<SimpleModeViewProps> = ({ onOpenBackup }) => {
     await StorageService.saveSimpleTransactions(updatedTxs);
     await StorageService.saveSimpleCustomers(updatedCustomers);
     setShowPaymentModal(null);
+    setPaymentInputAmt(0);
   };
 
   const getOrderDebt = (orderId: string) => {
@@ -785,7 +787,10 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
                                 </button>
                                 {!isSettled && (
                                   <button 
-                                    onClick={() => setShowPaymentModal({ orderId: order.id, custId: customer.id })}
+                                    onClick={() => {
+                                      setPaymentInputAmt(0);
+                                      setShowPaymentModal({ orderId: order.id, custId: customer.id });
+                                    }}
                                     className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-black shadow-lg shadow-emerald-200 active:scale-95 transition-all"
                                   >
                                     ثبت پول
@@ -1144,7 +1149,7 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
       {showOrderModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center no-print p-4">
           <div className="absolute inset-0" onClick={() => setShowOrderModal(null)} />
-          <div className="relative bg-white w-full max-w-md mx-auto rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom-10 border-t-8 border-indigo-600 overflow-hidden max-h-[90vh] overflow-y-auto no-scrollbar">
+          <div className="relative bg-white w-full max-md mx-auto rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom-10 border-t-8 border-indigo-600 overflow-hidden max-h-[90vh] overflow-y-auto no-scrollbar">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-black text-slate-800 flex items-center gap-3">
                 <ShoppingBag className="text-indigo-600" />
@@ -1270,19 +1275,49 @@ ${shopInfo.phone ? `📞 تماس: ${shopInfo.phone}` : ''}`;
             </div>
             
             <div className="space-y-5">
-              <div className="space-y-1">
-                <label className="text-[11px] font-black text-slate-700 mr-2 uppercase tracking-widest text-center block">مبلغ پرداختی مشتری (افغانی)</label>
-                <input id="newPmtAmt" type="number" autoFocus className="w-full px-5 py-6 bg-slate-50 rounded-2xl outline-none font-black text-center text-3xl focus:ring-2 ring-emerald-400 border border-slate-100" placeholder="0"/>
-              </div>
-              <button 
-                onClick={() => {
-                  const amt = parseFloat((document.getElementById('newPmtAmt') as HTMLInputElement).value) || 0;
-                  addOrderPayment(showPaymentModal.orderId, showPaymentModal.custId, amt);
-                }}
-                className="w-full py-5 bg-emerald-500 text-white rounded-[1.5rem] font-black shadow-xl shadow-emerald-200 flex items-center justify-center gap-3 active:scale-95 transition-all"
-              >
-                ثبت و بروزرسانی حساب
-              </button>
+              {(() => {
+                const currentOrderDebt = getOrderDebt(showPaymentModal.orderId);
+                const isPaymentExcessive = paymentInputAmt > currentOrderDebt;
+                
+                return (
+                  <>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center px-2">
+                        <label className="text-[11px] font-black text-slate-700 uppercase tracking-widest">مبلغ پرداختی (افغانی)</label>
+                        <span className="text-[10px] font-black text-indigo-500">مانده بدهی: {currentOrderDebt.toLocaleString()}</span>
+                      </div>
+                      <input 
+                        id="newPmtAmt" 
+                        type="number" 
+                        autoFocus 
+                        className={`w-full px-5 py-6 rounded-2xl outline-none font-black text-center text-3xl focus:ring-2 transition-all border ${isPaymentExcessive ? 'border-rose-500 bg-rose-50 ring-rose-400' : 'bg-slate-50 border-slate-100 ring-emerald-400'}`} 
+                        placeholder="0"
+                        onChange={(e) => setPaymentInputAmt(parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    
+                    {isPaymentExcessive && (
+                      <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+                        <AlertCircle className="text-rose-600 shrink-0" size={16} />
+                        <p className="text-[10px] font-black text-rose-600 leading-relaxed">
+                          مبلغ وارد شده از مانده بدهی سفارش ({currentOrderDebt.toLocaleString()} افغانی) بیشتر است.
+                        </p>
+                      </div>
+                    )}
+
+                    <button 
+                      disabled={isPaymentExcessive}
+                      onClick={() => {
+                        const amt = parseFloat((document.getElementById('newPmtAmt') as HTMLInputElement).value) || 0;
+                        addOrderPayment(showPaymentModal.orderId, showPaymentModal.custId, amt);
+                      }}
+                      className={`w-full py-5 text-white rounded-[1.5rem] font-black shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all ${isPaymentExcessive ? 'bg-rose-600 shadow-rose-200 opacity-60 cursor-not-allowed' : 'bg-emerald-500 shadow-emerald-200'}`}
+                    >
+                      ثبت و بروزرسانی حساب
+                    </button>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
